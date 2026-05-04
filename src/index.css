@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-bg-light text-auteco-blue font-sans antialiased;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-auteco-red text-white px-4 py-2 rounded-lg hover:bg-auteco-red/90 transition-all active:scale-95 disabled:opacity-50;
+  }
+  
+  .glass-card {
+    @apply bg-white rounded-xl shadow-sm border border-gray-100;
+  }
+  
+  .badge {
+    @apply px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider;
+  }
+  
+  .badge-repair { @apply bg-auteco-red/10 text-auteco-red; }
+  .badge-ready { @apply bg-green-100 text-green-700; }
+  .badge-pending { @apply bg-auteco-blue/10 text-auteco-blue; }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-400;
+}
