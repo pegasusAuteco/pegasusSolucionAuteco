@@ -25,3 +25,26 @@ def imagen_base64(pagina,rutaPDF):
     imagen_sola.save(memoria,format = "JPEG")
     texto_base64 = base64.b64encode(memoria.getvalue()).decode('utf-8')
     return texto_base64
+
+
+def extraer_datos_ia(imagen_base64,prompt):
+    envio_dato = cliente.chat.completions.create(
+        model = gpt-4o-mini,
+        messages =[{
+            role = user,
+            content =[{
+                type =text,
+                text = prompt  
+            },
+            {
+             type = image_url,
+             image_url={
+                url = f"data:image/jpeg;base64,{imagen_base64}"
+                    }   
+                }
+            ]
+        }
+    ],
+    max_tokens = 1000 
+)
+    return envio_dato
