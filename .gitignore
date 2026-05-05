@@ -1,6 +1,21 @@
+# Variables de entorno - NUNCA subir al repositorio
 .env
+**/.env
+*.env
 backend/.env
+
+# Python
 __pycache__/
+*.py[cod]
 *.pyc
+*.pyo
 venv/
 .venv/
+env/
+
+# Node
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
