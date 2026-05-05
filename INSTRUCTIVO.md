@@ -54,6 +54,9 @@ src/
 | **httpx** | 0.27.0 | Cliente HTTP asyncronous para Python. Se usa para comunicarse con APIs externas (LLMs, otros microservicios). Alternativa moderna a requests con soporte async. |
 | **python-dotenv** | 1.0.1 | Carga variables de entorno desde archivo .env. Mantiene secretos (API keys, passwords) fuera del código fuente. |
 | **python-multipart** | 0.0.12 | Necesario para que FastAPI procese formularios multipart (subida de archivos PDF a knowledge_base). |
+| **motor** | 3.6.0 | Driver oficial de MongoDB para Python asíncrono. Permite operaciones de lectura/escritura en MongoDB sin bloquear el event loop de FastAPI. |
+| **redis[asyncio]** | 5.0.8 | Cliente Redis asíncrono para Python. Permite acceso a sesiones en memoria desde FastAPI sin bloqueos. |
+| **groq** | 0.11.0 | SDK oficial de GROQ para transcripción de voz con Whisper. Convierte audio del mecánico a texto para enviar al pipeline RAG. |
 
 ### Estructura de carpetas
 
@@ -69,19 +72,154 @@ backend/
 │   ├── retrieval/ ← Búsqueda semántica e híbrida en Qdrant
 │   └── generation/← Prompt engineering + llamado a LLM
 ├── analytics/     ← Estadísticas de uso por rol
-└── vector_store/  ← Configuración y conexión a Qdrant
+├── vector_store/  ← Configuración y conexión a Qdrant
+└── logs/          ← Módulo NoSQL: sesiones Redis + historial MongoDB
+    ├── connections.py   ← Conexiones async a Redis y MongoDB
+    ├── log_schemas.py   ← Modelos Pydantic para mensajes y sesiones
+    ├── log_service.py   ← Lógica: crear sesión, append, flush, historial
+    ├── log_router.py    ← 5 endpoints REST (pendiente integración en main.py)
+    └── init_indexes.py  ← Script one-time para crear índices MongoDB
 ```
 
 ---
 
 ## Infraestructura
 
-| Herramienta | Propósito |
-|---|---|
+| Herramienta | Versión | Propósito |
+|---|---|---|
 | **Docker + Compose** | Conteneriza todos los servicios (web, backend, DB, vector store). Un solo comando (`docker-compose up -d`) levanta el stack completo. Aísla dependencias del sistema host. |
 | **PostgreSQL 16** | Base de datos relacional para datos estructurados (usuarios, conversaciones, mensajes). Versión 16 con mejoras de performance y seguridad. |
 | **Qdrant** | Vector store para búsqueda semántica. Almacena embeddings de manuales técnicos y permite consultas por similitud de significado (no solo palabras clave). |
+| **Redis Stack** | 6.2 | Almacenamiento en memoria para sesiones activas de conversación. Latencia < 1ms. Expulsa sesiones antiguas automáticamente (LRU) cuando la memoria llega al límite configurado (512 MB). |
+| **MongoDB** | 7.0 | Base de datos NoSQL para logs históricos de conversaciones. Almacenamiento nativo de documentos JSON (BSON). Escalable horizontalmente con sharding. TTL automático de documentos a 1 año. |
 | **Nginx** | Servidor web en producción. Sirve el frontend build-eado, aplica caché de assets estáticos, compresión gzip y proxy reverso al backend. |
+
+---
+
+## Base de Datos NoSQL — Logs de Conversaciones
+
+### Arquitectura Hot/Cold (Redis + MongoDB)
+
+El sistema maneja los logs de conversaciones de mecánicos en dos capas según la frecuencia de acceso:
+
+```
+SESIÓN ACTIVA (en curso)
+       ↓
+┌─────────────┐
+│    REDIS    │  ← Memoria caliente: contexto activo (últimos 20 msgs)
+│   TTL: 24h  │     Latencia: <1ms | Se expulsa con LRU al llenar RAM
+└──────┬──────┘
+       │  Flush automático cada 10 mensajes o al cerrar sesión
+       ↓
+┌─────────────┐
+│   MongoDB   │  ← Almacenamiento frío: historial completo y persistente
+│  TTL: 1 año │     JSON nativo | Escalable | Índices optimizados
+└─────────────┘
+```
+
+**¿Por qué dos capas y no solo una?**
+
+| Criterio | Solo MongoDB | Solo Redis | Redis + MongoDB ✅ |
+|---|---|---|---|
+| Latencia consulta activa | ~30ms | <1ms | <1ms |
+| Persistencia garantizada | ✅ | ⚠️ Volátil | ✅ |
+| Costo de RAM | Bajo | Alto | Óptimo |
+| Escalabilidad horizontal | ✅ | ✅ | ✅ |
+| Ideal para GROQ/voz | Lento | No persiste | ✅ |
+
+---
+
+### Flujo completo con GROQ (comandos por voz)
+
+```
+Mecánico habla → micrófono
+       ↓
+[1] GROQ Whisper transcribe audio → texto
+       ↓
+[2] FastAPI recibe texto transcrito
+       ↓
+[3] Lee contexto de Redis (últimos 20 mensajes del mecánico)
+       ↓
+[4] Pipeline RAG: contexto + pregunta → Qdrant → LLM → respuesta
+       ↓
+[5] Guarda nuevo par pregunta/respuesta en Redis
+       ↓
+[6] Si hay ≥ 10 mensajes → flush automático a MongoDB
+       ↓
+[7] Al cerrar sesión → flush final + limpieza de Redis
+```
+
+---
+
+### Estructura del documento MongoDB
+
+```json
+{
+  "_id": "ObjectId",
+  "mechanic_id": "usr_abc123",
+  "session_id": "sess_xyz789",
+  "motorcycle": {
+    "brand": "Honda",
+    "model": "CB190R",
+    "year": 2023
+  },
+  "started_at": "2026-05-05T07:00:00Z",
+  "last_activity": "2026-05-05T07:45:00Z",
+  "messages": [
+    {
+      "role": "user",
+      "content": "La moto no enciende en frío",
+      "timestamp": "2026-05-05T07:01:00Z",
+      "input_type": "voice",
+      "transcription_confidence": 0.97
+    },
+    {
+      "role": "assistant",
+      "content": "Para la CB190R en frío, revise el carburador...",
+      "timestamp": "2026-05-05T07:01:03Z"
+    }
+  ],
+  "tags": ["arranque", "carburador", "CB190R"]
+}
+```
+
+**Índices creados en MongoDB (`motorconnect_logs.conversation_logs`)**
+
+| Índice | Tipo | Propósito |
+|---|---|---|
+| `{ mechanic_id: 1, started_at: -1 }` | Compuesto | Historial por mecánico ordenado por fecha |
+| `{ session_id: 1 }` | Único | Búsqueda rápida de sesión + previene duplicados |
+| `{ "motorcycle.model": 1 }` | Campo anidado | Analytics por modelo de moto |
+| `{ tags: 1 }` | Array | Búsqueda por categoría de problema |
+| `{ started_at: 1 }` | TTL (1 año) | Borrado automático de logs antiguos |
+
+---
+
+### Endpoints del módulo `backend/logs/`
+
+| Método | Endpoint | Descripción |
+|---|---|---|
+| `POST` | `/api/logs/session` | Crear nueva sesión de conversación |
+| `POST` | `/api/logs/message` | Agregar mensaje a sesión activa |
+| `GET` | `/api/logs/context/{mechanic_id}/{session_id}` | Obtener contexto activo (desde Redis) |
+| `DELETE` | `/api/logs/session/{mechanic_id}/{session_id}` | Cerrar sesión y persistir en MongoDB |
+| `GET` | `/api/logs/history/{mechanic_id}` | Historial de sesiones del mecánico |
+
+**Integración pendiente (backend dev):** Agregar en `backend/main.py`:
+
+```python
+from logs.log_router import router as logs_router
+app.include_router(logs_router, prefix="/api/logs", tags=["logs"])
+```
+
+**Variables de entorno requeridas**
+
+```bash
+MONGO_URI=mongodb://motorconnect:password@mongodb:27017/motorconnect_logs
+MONGO_DB_NAME=motorconnect_logs
+REDIS_URL=redis://redis:6379/0
+GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxx
+```
 
 ---
 
