@@ -1,0 +1,22 @@
+{
+  "name": "pegasus-ingestion",
+  "version": "1.0.0",
+  "description": "Script de ingesta de manuales PDF de motos para Pegasus Mechanics. Vectoriza contenido con OpenAI y lo almacena en Supabase.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "ingest": "node ingest.js",
+    "ingest:all": "node ingest.js --all",
+    "test": "node test-connection.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.8",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "multer": "^1.4.5-lts.1",
+    "openai": "^4.67.3",
+    "pdf-parse": "^1.1.1",
+    "ws": "^8.20.0"
+  }
+}
