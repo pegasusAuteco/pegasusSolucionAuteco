@@ -2,10 +2,12 @@
 .env
 **/.env
 *.env
+backend/.env
 
 # Python
 __pycache__/
 *.py[cod]
+*.pyc
 *.pyo
 venv/
 .venv/
