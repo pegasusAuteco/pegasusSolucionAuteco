@@ -85,6 +85,67 @@ backend/
 
 ---
 
+## Tecnologías, IA y Automatización
+
+Esta sección describe el stack tecnológico recomendado para la implementación de capacidades avanzadas de IA y flujos de automatización.
+
+### Procesamiento de PDFs
+| Herramienta | Características |
+|---|---|
+| **PyMuPDF** | Extrae texto e imágenes conservando coordenadas espaciales. |
+| **PDFPlumber** | Especializado en la extracción precisa de tablas y catálogos complejos. |
+| **LlamaParse** | Servicio avanzado que convierte documentos a Markdown optimizado para LLMs. |
+
+### Chunking (Estrategias de Fragmentación)
+| Herramienta | Propósito |
+|---|---|
+| **LangChain** | Uso de `RecursiveCharacterTextSplitter` para segmentación basada en semántica y caracteres. |
+| **LlamaIndex** | Orientado a estructuras jerárquicas, ideal para documentos con secciones y subsecciones. |
+
+### Embeddings
+| Modelo | Ventajas |
+|---|---|
+| **OpenAI text-embedding-3-small** | Alta eficiencia, bajo costo y excelente rendimiento en español. |
+| **multilingual-e5-large** | Modelo open-source de alto rendimiento para despliegue local (Hugging Face). |
+| **Cohere Embed v3** | Servicio gestionado líder en capacidades multilenguaje. |
+
+### Base de Datos Vectorial
+| Plataforma | Caso de Uso |
+|---|---|
+| **Pinecone** | Solución gestionada (SaaS) con escalabilidad automática y free tier. |
+| **Qdrant** | Motor open-source de alto rendimiento, ideal para auto-alojamiento (Docker). |
+| **pgvector** | Extensión para PostgreSQL; recomendada si ya se utiliza este motor relacional. |
+| **ChromaDB** | Base de datos liviana, ideal para prototipado rápido y desarrollo local. |
+
+### LLM (Modelos de Lenguaje)
+| Modelo | Perfil |
+|---|---|
+| **Claude Sonnet** | Capacidades multimodales y razonamiento técnico superior. |
+| **GPT-4o** | El estándar de la industria en razonamiento y versatilidad. |
+| **Gemini Flash** | Optimizado para velocidad, bajo costo y ventanas de contexto masivas. |
+| **Llama 3** | Modelo open-weights para despliegues privados y on-premise. |
+
+### Almacenamiento de Imágenes
+| Servicio | Descripción |
+|---|---|
+| **AWS S3** | Estándar de la industria para almacenamiento de objetos a gran escala. |
+| **Supabase Storage** | Solución integrada y simplificada para proyectos con Supabase. |
+
+### Desarrollo Backend
+| Framework | Razón de Elección |
+|---|---|
+| **FastAPI (Python)** | El ecosistema RAG es nativo en Python; ofrece la mejor integración. |
+| **Node.js + Express** | Recomendado para equipos con stack dominante en JavaScript/TypeScript. |
+| **Supabase** | Backend-as-a-Service (BaaS) para ciclos de desarrollo acelerados. |
+
+### Desarrollo Frontend
+| Framework | Ventaja Competitiva |
+|---|---|
+| **Next.js + Vercel AI SDK** | Integración nativa de streaming de IA y SSR. |
+| **React Native / Expo** | Framework de elección para aplicaciones móviles nativas multiplataforma. |
+
+---
+
 ## Flujo de datos (RAG)
 
 ```
