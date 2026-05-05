@@ -4,16 +4,16 @@ Interfaz web para el taller **Pegasus Mechanics**, con un asistente de IA integr
 
 ---
 
-##  Características
+## ✨ Características
 
-- **Chat IA** con historial de conversaciones guardadas, soporte de imágenes y reconocimiento de voz
-- **Inventario de motos** con búsqueda en tiempo real, nombre y cilindraje
--  **Diseño responsive** — adaptado para desktop y mobile
-- Paleta de colores corporativa Auteco/Pegasus (`#E10600`, `#111111`)
+- 💬 **Chat IA** con historial de conversaciones guardadas, soporte de imágenes y reconocimiento de voz
+- 🏍️ **Inventario de motos** con búsqueda en tiempo real, nombre y cilindraje
+- 📱 **Diseño responsive** — adaptado para desktop y mobile
+- 🎨 Paleta de colores corporativa Auteco/Pegasus (`#E10600`, `#111111`)
 
 ---
 
-##  Requisitos previos
+## 🛠️ Requisitos previos
 
 Asegúrate de tener instalado:
 
@@ -30,7 +30,7 @@ npm -v
 
 ---
 
-##  Instalación y puesta en marcha
+## 🚀 Instalación y puesta en marcha
 
 ### 1. Clona el repositorio
 
@@ -61,7 +61,7 @@ Abre tu navegador en **[http://localhost:5173](http://localhost:5173)**
 
 ---
 
-##  Estructura del proyecto
+## 📁 Estructura del proyecto
 
 ```
 ├── public/
@@ -87,7 +87,7 @@ Abre tu navegador en **[http://localhost:5173](http://localhost:5173)**
 
 ---
 
-##  Comandos disponibles
+## 🧩 Comandos disponibles
 
 | Comando | Descripción |
 |---------|-------------|
@@ -98,7 +98,7 @@ Abre tu navegador en **[http://localhost:5173](http://localhost:5173)**
 
 ---
 
-##  Nota sobre el reconocimiento de voz
+## 🎙️ Nota sobre el reconocimiento de voz
 
 El botón de voz utiliza la **Web Speech API** del navegador.
 
@@ -107,6 +107,20 @@ El botón de voz utiliza la **Web Speech API** del navegador.
 
 ---
 
-##  Licencia
+## 🤝 Contribuir
+
+1. Crea una rama desde `frontend`:
+   ```bash
+   git checkout -b feature/nombre-de-tu-feature
+   ```
+2. Realiza tus cambios y haz commit:
+   ```bash
+   git commit -m "feat: descripción del cambio"
+   ```
+3. Abre un **Pull Request** hacia la rama `frontend`
+
+---
+
+## 📄 Licencia
 
 Proyecto interno de **Pegasus Mechanics / Auteco**. Uso restringido.

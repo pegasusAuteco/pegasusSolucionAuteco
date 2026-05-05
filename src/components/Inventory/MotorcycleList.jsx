@@ -112,19 +112,18 @@ const MotorcycleList = () => {
 
   return (
     <div className="flex flex-col p-6 min-h-full">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-auteco-blue">Motorcycles</h2>
-        <button className="bg-auteco-red text-white p-2 rounded-full shadow-lg shadow-auteco-red/30 hover:scale-110 transition-all">
-          <Plus className="w-6 h-6" />
-        </button>
+      <div className="flex items-center gap-4 mb-6">
+        <h2 className="text-2xl font-bold text-auteco-blue dark:text-gray-100 tracking-tight transition-colors duration-300">
+          INVENTARIO
+        </h2>
       </div>
 
       <div className="relative mb-8">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500 transition-colors" />
         <input
           type="text"
           placeholder="Buscar por nombre, cliente o ID..."
-          className="w-full bg-white border-none rounded-xl py-3 pl-12 pr-4 text-sm shadow-sm focus:ring-2 focus:ring-auteco-blue transition-all"
+          className="w-full bg-white dark:bg-gray-900/50 dark:backdrop-blur-md border border-transparent dark:border-gray-800 rounded-xl py-3 pl-12 pr-4 text-sm text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 shadow-sm dark:shadow-inner focus:ring-2 focus:ring-auteco-blue dark:focus:ring-auteco-red focus:border-transparent dark:focus:border-auteco-red transition-all duration-300"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
