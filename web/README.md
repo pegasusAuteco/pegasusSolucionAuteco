@@ -4,7 +4,7 @@ Interfaz web para el taller **Pegasus Mechanics**, con un asistente de IA integr
 
 ---
 
-## ✨ Características
+##  Características
 
 - 💬 **Chat IA** con historial de conversaciones guardadas, soporte de imágenes y reconocimiento de voz
 - 🏍️ **Inventario de motos** con búsqueda en tiempo real, nombre y cilindraje
@@ -102,19 +102,6 @@ El botón de voz utiliza la **Web Speech API** del navegador.
 
 ---
 
-## 🤝 Contribuir
-
-1. Crea una rama desde `frontend`:
-   ```bash
-   git checkout -b feature/nombre-de-tu-feature
-   ```
-2. Realiza tus cambios y haz commit:
-   ```bash
-   git commit -m "feat: descripción del cambio"
-   ```
-3. Abre un **Pull Request** hacia la rama `frontend`
-
----
 
 ## 📄 Licencia
 
