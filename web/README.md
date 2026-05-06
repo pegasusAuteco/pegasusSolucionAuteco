@@ -38,12 +38,7 @@ npm -v
 git clone https://github.com/pegasusAuteco/pegasusSolucionAuteco.git
 cd pegasusSolucionAuteco
 ```
-
-### 2. Cambia a la rama del frontend
-
-```bash
-git checkout frontend
-```
+y luego `cd web`
 
 ### 3. Instala las dependencias
 
