@@ -1,70 +1,123 @@
-import { useState, type FormEvent } from 'react'
-import { Wrench } from 'lucide-react'
+import React, { useState, type FormEvent } from 'react'
+import { motion } from 'framer-motion'
+import { Mail, Lock, ArrowRight, ShieldCheck } from 'lucide-react'
 import { useLogin } from '@hooks/useAuth'
 import { useAuthStore } from '@store/authStore'
-import { Navigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const login = useLogin()
+  const [error, setError] = useState('')
+  const setAuth = useAuthStore((s) => s.setAuth)
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const navigate = useNavigate()
 
   if (isAuthenticated) return <Navigate to="/chat" replace />
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
-    login.mutate({ email, password })
+    setError('')
+
+    if (!email || !password) {
+      setError('Por favor completa todos los campos.')
+      return
+    }
+
+    let storedUsers = JSON.parse(localStorage.getItem('users') || '[]')
+    
+    // Ensure admin exists
+    if (!storedUsers.some((u: any) => u.email === 'admin@pegasus.com')) {
+      const defaultAdmin = { id: 'admin-1', name: 'Admin', email: 'admin@pegasus.com', password: 'admin', role: 'admin' }
+      storedUsers.push(defaultAdmin)
+      localStorage.setItem('users', JSON.stringify(storedUsers))
+    }
+
+    const user = storedUsers.find((u: any) => u.email === email && u.password === password)
+
+    if (user) {
+      setAuth(user, 'mock-jwt-token')
+      navigate('/chat')
+    } else {
+      setError('Credenciales incorrectas. Inténtalo de nuevo.')
+    }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary-50 to-secondary-50 p-4">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-lg">
-        <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary-500">
-            <Wrench className="h-6 w-6 text-white" />
-          </div>
-          <h1 className="text-xl font-bold text-gray-900">MotorConnect</h1>
-          <p className="mt-1 text-sm text-gray-500">Inicia sesión para continuar</p>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 p-4 transition-colors duration-300">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="max-w-md w-full bg-white dark:bg-gray-900 rounded-2xl shadow-xl overflow-hidden"
+      >
+        <div className="bg-auteco-red p-6 text-center">
+          <img src="/logo.png" alt="Pegasus Mechanics" className="h-16 mx-auto object-contain drop-shadow-md mb-4 brightness-0 invert" />
+          <h2 className="text-2xl font-bold text-white">Iniciar Sesión</h2>
+          <p className="text-red-100 mt-2 text-sm">Accede al panel de control de Pegasus</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Correo electrónico</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
-              placeholder="tu@correo.com"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Contraseña</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
-              placeholder="••••••••"
-            />
-          </div>
-          {login.isError && (
-            <p className="text-sm text-red-600">
-              Credenciales inválidas. Intenta de nuevo.
-            </p>
+        <form onSubmit={handleSubmit} className="p-8 space-y-6">
+          {error && (
+            <div className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm border border-red-200 dark:border-red-800 flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 shrink-0" />
+              <span>{error}</span>
+            </div>
           )}
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Correo Electrónico</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Mail className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-auteco-red focus:border-auteco-red transition-all sm:text-sm"
+                  placeholder="admin@pegasus.com"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Contraseña</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Lock className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-auteco-red focus:border-auteco-red transition-all sm:text-sm"
+                  placeholder="••••••••"
+                />
+              </div>
+            </div>
+          </div>
+
           <button
             type="submit"
-            disabled={login.isPending}
-            className="w-full rounded-lg bg-primary-500 px-4 py-2 text-sm font-medium text-white hover:bg-primary-600 disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 bg-auteco-red text-white py-3 px-4 rounded-xl hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-auteco-red transition-all shadow-md hover:shadow-lg active:scale-95 font-medium"
           >
-            {login.isPending ? 'Iniciando sesión...' : 'Iniciar sesión'}
+            Ingresar
+            <ArrowRight className="w-4 h-4" />
           </button>
+
+          <p className="text-center text-sm text-gray-600 dark:text-gray-400 mt-6">
+            ¿No tienes cuenta?{' '}
+            <button 
+              type="button" 
+              onClick={() => navigate('/register')}
+              className="text-auteco-red hover:text-red-700 font-semibold transition-colors"
+            >
+              Regístrate aquí
+            </button>
+          </p>
         </form>
-      </div>
+      </motion.div>
     </div>
   )
 }
