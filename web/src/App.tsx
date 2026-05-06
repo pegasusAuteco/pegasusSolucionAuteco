@@ -4,6 +4,7 @@ import Layout from '@components/layout/Layout'
 import ProtectedRoute from '@components/auth/ProtectedRoute'
 
 const LoginPage = lazy(() => import('@pages/LoginPage'))
+const RegisterPage = lazy(() => import('@pages/RegisterPage'))
 const ChatPage = lazy(() => import('@pages/ChatPage'))
 const HistoryPage = lazy(() => import('@pages/HistoryPage'))
 const ProfilePage = lazy(() => import('@pages/ProfilePage'))
@@ -17,15 +18,12 @@ export default function App() {
       }>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
           <Route element={<ProtectedRoute />}>
-            <Route element={<Layout />}>
-              <Route path="/chat" element={<ChatPage />} />
-              <Route path="/history" element={<HistoryPage />} />
-              <Route path="/profile" element={<ProfilePage />} />
-              <Route path="/admin" element={
-                <ProtectedRoute adminOnly><AdminPage /></ProtectedRoute>
-              } />
-            </Route>
+            <Route path="/chat" element={<Layout />} />
+            <Route path="/history" element={<HistoryPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/admin" element={<Navigate to="/chat" replace />} />
           </Route>
           <Route path="*" element={<Navigate to="/chat" replace />} />
         </Routes>

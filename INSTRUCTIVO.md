@@ -96,6 +96,7 @@ backend/
 
 ---
 
+feature/BDD-NoSQL
 ## Base de Datos NoSQL — Logs de Conversaciones
 
 ### Arquitectura Hot/Cold (Redis + MongoDB)
@@ -220,6 +221,7 @@ MONGO_DB_NAME=motorconnect_logs
 REDIS_URL=redis://redis:6379/0
 GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxx
 ```
+
 
 ---
 

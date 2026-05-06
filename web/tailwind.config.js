@@ -4,9 +4,13 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
+        'auteco-red': '#E10600',
+        'auteco-blue': '#1F3B73',
+        'bg-light': '#F5F5F5',
         primary: {
           50: '#f0f9ff',
           100: '#e0f2fe',
@@ -20,6 +24,9 @@ export default {
           600: '#475569',
           700: '#334155',
         },
+      },
+      fontFamily: {
+        sans: ['Inter', 'Poppins', 'sans-serif'],
       },
       spacing: {
         'safe-top': 'env(safe-area-inset-top)',
