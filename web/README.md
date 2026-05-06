@@ -82,7 +82,7 @@ Abre tu navegador en **[http://localhost:5173](http://localhost:5173)**
 
 ---
 
-## 🧩 Comandos disponibles
+##  Comandos disponibles
 
 | Comando | Descripción |
 |---------|-------------|
