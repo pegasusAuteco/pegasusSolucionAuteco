@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-localdev123}
       POSTGRES_DB: ${DB_NAME:-motorconnect_db}
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -82,7 +82,7 @@ services:
       MONGO_DB_NAME: motorconnect_logs
       GROQ_API_KEY: ${GROQ_API_KEY:-}
     ports:
-      - "8000:8000"
+      - "8001:8000"
     depends_on:
       db:
         condition: service_healthy
