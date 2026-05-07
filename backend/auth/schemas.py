@@ -57,5 +57,24 @@ class RegisterResponse(BaseModel):
     created_at: str
 
 
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class UserOut(BaseModel):
+    id: str
+    email: str
+    name: str
+    role: str
+    created_at: str
+
+
+class LoginResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserOut
+
+
 class ErrorResponse(BaseModel):
     detail: str

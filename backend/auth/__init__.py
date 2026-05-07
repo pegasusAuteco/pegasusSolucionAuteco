@@ -1,5 +1,5 @@
 from auth.models import User, UserRole
-from auth.schemas import RegisterRequest, RegisterResponse
+from auth.schemas import RegisterRequest, RegisterResponse, LoginRequest, LoginResponse, UserOut
 from auth.service import AuthService
 from auth.router import router as auth_router
 
