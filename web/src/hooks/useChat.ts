@@ -47,7 +47,17 @@ export function useSendMessage() {
   return useMutation({
     mutationFn: ({ conversationId, content }: { conversationId: string; content: string }) =>
       chatService.sendMessage(conversationId, content),
-    onMutate: () => setIsLoading(true),
+    onMutate: (variables) => {
+      setIsLoading(true);
+      // Agregar el mensaje del usuario inmediatamente (optimistic update)
+      addMessage({
+        id: Date.now().toString(),
+        conversation_id: variables.conversationId,
+        role: 'user',
+        content: variables.content,
+        created_at: new Date().toISOString()
+      });
+    },
     onSuccess: (data) => {
       addMessage(data)
       setIsLoading(false)
