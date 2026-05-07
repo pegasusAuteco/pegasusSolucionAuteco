@@ -62,11 +62,12 @@ export default function RegisterPage() {
 
       if (status === 409) {
         setError('email', { message: detail })
-      } else if (status === 400 && Array.isArray(detail)) {
+      } else if ((status === 400 || status === 422) && Array.isArray(detail)) {
         const fieldMap: Record<string, keyof RegisterForm> = {
           nombre: 'nombre',
           email: 'email',
           password: 'password',
+          accept_terms: 'acceptTerms',
         }
         for (const e of detail) {
           const field = e.loc?.includes?.('body')

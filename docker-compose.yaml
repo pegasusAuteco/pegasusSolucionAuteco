@@ -105,14 +105,14 @@ services:
       context: ./web
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: http://backend:8000
+        VITE_API_URL: /api
     container_name: motorconnect-web
     ports:
       - "5173:80"
     depends_on:
       - backend
     environment:
-      VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+      VITE_API_URL: ${VITE_API_URL:-/api}
     networks:
       - motorconnect-net
     restart: unless-stopped
