@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -5,6 +6,7 @@ import { motion } from 'framer-motion'
 import { Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react'
 import { useLogin } from '@hooks/useAuth'
 import { useAuthStore } from '@store/authStore'
+import { useToastStore } from '@store/toastStore'
 import { Navigate, useNavigate } from 'react-router-dom'
 
 const loginSchema = z.object({
@@ -16,8 +18,10 @@ type LoginForm = z.infer<typeof loginSchema>
 
 export default function LoginPage() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const addToast = useToastStore((s) => s.addToast)
   const navigate = useNavigate()
   const loginMutation = useLogin()
+  const [retryPayload, setRetryPayload] = useState<LoginForm | null>(null)
 
   const {
     register,
@@ -31,11 +35,27 @@ export default function LoginPage() {
   if (isAuthenticated) return <Navigate to="/chat" replace />
 
   const onSubmit = async (data: LoginForm) => {
+    if (!navigator.onLine) {
+      const message = 'Sin conexión. Verifica tu internet y vuelve a intentarlo.'
+      setRetryPayload(data)
+      setError('root', { message })
+      addToast('error', message)
+      return
+    }
+
     try {
       await loginMutation.mutateAsync(data)
+      setRetryPayload(null)
     } catch (err: any) {
-      const detail = err?.response?.data?.detail || 'Error de conexión. Inténtalo de nuevo.'
+      const isNetworkError = !err?.response
+      const detail = isNetworkError
+        ? 'No se pudo conectar con el servidor. Puedes reintentar.'
+        : err?.response?.data?.detail || 'Error de conexión. Inténtalo de nuevo.'
       setError('root', { message: detail })
+      if (isNetworkError) {
+        setRetryPayload(data)
+        addToast('error', detail)
+      }
     }
   }
 
@@ -56,7 +76,16 @@ export default function LoginPage() {
           {errors.root && (
             <div className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm border border-red-200 dark:border-red-800 flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{errors.root.message}</span>
+              <span className="flex-1">{errors.root.message}</span>
+              {retryPayload && (
+                <button
+                  type="button"
+                  onClick={() => onSubmit(retryPayload)}
+                  className="rounded-md border border-red-300 px-2 py-1 text-xs font-semibold hover:bg-red-100"
+                >
+                  Reintentar
+                </button>
+              )}
             </div>
           )}
 

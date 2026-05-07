@@ -1,10 +1,12 @@
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { motion } from 'framer-motion'
-import { User, Mail, Lock, Building2, AlertCircle, CheckCircle } from 'lucide-react'
+import { User, Mail, Lock, Building2, AlertCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useRegister } from '@hooks/useAuth'
+import { useToastStore } from '@store/toastStore'
 
 const registerSchema = z
   .object({
@@ -33,6 +35,8 @@ type RegisterForm = z.infer<typeof registerSchema>
 export default function RegisterPage() {
   const navigate = useNavigate()
   const registerMutation = useRegister()
+  const addToast = useToastStore((s) => s.addToast)
+  const [retryPayload, setRetryPayload] = useState<RegisterForm | null>(null)
 
   const {
     register,
@@ -48,6 +52,14 @@ export default function RegisterPage() {
   })
 
   const onSubmit = async (data: RegisterForm) => {
+    if (!navigator.onLine) {
+      const message = 'Sin conexión. Verifica tu internet y vuelve a intentarlo.'
+      setRetryPayload(data)
+      setError('root', { message })
+      addToast('error', message)
+      return
+    }
+
     try {
       await registerMutation.mutateAsync({
         nombre: data.nombre,
@@ -56,6 +68,7 @@ export default function RegisterPage() {
         accept_terms: true,
         empresa_taller: data.empresa_taller || undefined,
       })
+      setRetryPayload(null)
     } catch (err: any) {
       const status = err?.response?.status
       const detail = err?.response?.data?.detail
@@ -80,9 +93,10 @@ export default function RegisterPage() {
           }
         }
       } else {
-        setError('root', {
-          message: 'Error de conexión. Inténtalo de nuevo.',
-        })
+        const message = 'No se pudo conectar con el servidor. Puedes reintentar.'
+        setRetryPayload(data)
+        setError('root', { message })
+        addToast('error', message)
       }
     }
   }
@@ -103,17 +117,19 @@ export default function RegisterPage() {
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="p-8 space-y-5">
-          {registerMutation.isSuccess && (
-            <div className="bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 p-3 rounded-lg text-sm border border-green-200 dark:border-green-800 flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 shrink-0" />
-              <span>Registro exitoso. Redirigiendo al inicio de sesión...</span>
-            </div>
-          )}
-
           {errors.root && (
             <div className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm border border-red-200 dark:border-red-800 flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{errors.root.message}</span>
+              <span className="flex-1">{errors.root.message}</span>
+              {retryPayload && (
+                <button
+                  type="button"
+                  onClick={() => onSubmit(retryPayload)}
+                  className="rounded-md border border-red-300 px-2 py-1 text-xs font-semibold hover:bg-red-100"
+                >
+                  Reintentar
+                </button>
+              )}
             </div>
           )}
 

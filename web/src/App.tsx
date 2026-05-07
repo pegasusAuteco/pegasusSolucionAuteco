@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
 import Layout from '@components/layout/Layout'
 import ProtectedRoute from '@components/auth/ProtectedRoute'
+import ToastViewport from '@components/shared/ToastViewport'
 
 const LoginPage = lazy(() => import('@pages/LoginPage'))
 const RegisterPage = lazy(() => import('@pages/RegisterPage'))
@@ -13,6 +14,7 @@ const AdminPage = lazy(() => import('@pages/AdminPage'))
 export default function App() {
   return (
     <BrowserRouter>
+      <ToastViewport />
       <Suspense fallback={
         <div className="flex min-h-screen items-center justify-center text-gray-500">Cargando...</div>
       }>
