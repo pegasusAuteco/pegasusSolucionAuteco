@@ -30,8 +30,8 @@ class RegisterRequest(BaseModel):
     def password_segura(cls, v):
         if len(v) < 8:
             raise ValueError("La contraseña debe tener al menos 8 caracteres")
-        if len(v) > 128:
-            raise ValueError("La contraseña no puede tener más de 128 caracteres")
+        if len(v) > 12:
+            raise ValueError("La contraseña no puede tener más de 12 caracteres")
         if not re.search(r"[A-Z]", v):
             raise ValueError("La contraseña debe contener al menos una mayúscula")
         if not re.search(r"[a-z]", v):

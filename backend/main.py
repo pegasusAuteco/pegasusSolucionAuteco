@@ -36,7 +36,17 @@ app.add_middleware(
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    return JSONResponse(status_code=400, content={"detail": exc.errors()})
+    cleaned_errors = []
+    for error in exc.errors():
+        normalized_error = dict(error)
+        ctx = normalized_error.get("ctx")
+        if isinstance(ctx, dict):
+            normalized_error["ctx"] = {
+                key: str(value) if isinstance(value, Exception) else value
+                for key, value in ctx.items()
+            }
+        cleaned_errors.append(normalized_error)
+    return JSONResponse(status_code=400, content={"detail": cleaned_errors})
 
 app.include_router(auth_router)
 

@@ -24,6 +24,11 @@ Web app (mobile-first responsive) for motorcycle repair shops. Employees can con
 -  **Admin Dashboard** — View all users' statistics
 -  **JWT Authentication** — Secure employee & admin roles
 
+## Auth Policy
+
+- Password policy: 8-12 characters
+- Must include at least one uppercase letter, one lowercase letter, and one number
+
 ## Project Structure
 
 ```
@@ -103,7 +108,7 @@ docker-compose up -d
 
 # 3. Access the app
 # Frontend: http://localhost:5173
-# Backend API: http://localhost:8000
+# Backend API: http://localhost:8001
 # Qdrant: http://localhost:6333
-# Database: localhost:5432
+# Database: localhost:5433
 ```
