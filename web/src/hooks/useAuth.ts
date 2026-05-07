@@ -2,7 +2,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { authService } from '@services/api'
 import { useAuthStore } from '@store/authStore'
-import type { LoginCredentials } from '@types'
+import type { LoginCredentials, RegisterData } from '@types'
 
 export function useLogin() {
   const navigate = useNavigate()
@@ -13,6 +13,17 @@ export function useLogin() {
     onSuccess: (data) => {
       setAuth(data.user, data.access_token)
       navigate('/chat')
+    },
+  })
+}
+
+export function useRegister() {
+  const navigate = useNavigate()
+
+  return useMutation({
+    mutationFn: (data: RegisterData) => authService.register(data),
+    onSuccess: () => {
+      navigate('/login')
     },
   })
 }

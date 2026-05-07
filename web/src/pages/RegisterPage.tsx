@@ -1,69 +1,118 @@
-import React, { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
 import { motion } from 'framer-motion'
-import { User, Mail, Lock, UserPlus, AlertCircle } from 'lucide-react'
+import { User, Mail, Lock, Building2, AlertCircle, CheckCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { useAuthStore } from '@store/authStore'
+import { useRegister } from '@hooks/useAuth'
+
+const registerSchema = z
+  .object({
+    nombre: z.string().min(1, 'El nombre es requerido').max(150, 'Máximo 150 caracteres'),
+    email: z.string().min(1, 'El email es requerido').email('Formato de email inválido'),
+    password: z
+      .string()
+      .min(8, 'Mínimo 8 caracteres')
+      .max(128, 'Máximo 128 caracteres')
+      .regex(/[A-Z]/, 'Debe contener al menos una mayúscula')
+      .regex(/[a-z]/, 'Debe contener al menos una minúscula')
+      .regex(/\d/, 'Debe contener al menos un número'),
+    confirmPassword: z.string().min(1, 'Debes confirmar la contraseña'),
+    acceptTerms: z.literal(true, {
+      errorMap: () => ({ message: 'Debes aceptar los términos y condiciones' }),
+    }),
+    empresa_taller: z.string().optional(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Las contraseñas no coinciden',
+    path: ['confirmPassword'],
+  })
+
+type RegisterForm = z.infer<typeof registerSchema>
 
 export default function RegisterPage() {
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [error, setError] = useState('')
-  
   const navigate = useNavigate()
-  const setAuth = useAuthStore((s) => s.setAuth)
+  const registerMutation = useRegister()
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    setError,
+  } = useForm<RegisterForm>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      acceptTerms: false as unknown as true,
+      empresa_taller: '',
+    },
+  })
 
-    if (!name || !email || !password || !confirmPassword) {
-      setError('Por favor completa todos los campos.')
-      return
+  const onSubmit = async (data: RegisterForm) => {
+    try {
+      await registerMutation.mutateAsync({
+        nombre: data.nombre,
+        email: data.email,
+        password: data.password,
+        accept_terms: true,
+        empresa_taller: data.empresa_taller || undefined,
+      })
+    } catch (err: any) {
+      const status = err?.response?.status
+      const detail = err?.response?.data?.detail
+
+      if (status === 409) {
+        setError('email', { message: detail })
+      } else if (status === 400 && Array.isArray(detail)) {
+        const fieldMap: Record<string, keyof RegisterForm> = {
+          nombre: 'nombre',
+          email: 'email',
+          password: 'password',
+        }
+        for (const e of detail) {
+          const field = e.loc?.includes?.('body')
+            ? fieldMap[e.loc[e.loc.length - 1]]
+            : undefined
+          if (field) {
+            setError(field, { message: e.msg.replace('Value error, ', '') })
+          } else {
+            setError('root', { message: e.msg })
+          }
+        }
+      } else {
+        setError('root', {
+          message: 'Error de conexión. Inténtalo de nuevo.',
+        })
+      }
     }
-
-    if (password !== confirmPassword) {
-      setError('Las contraseñas no coinciden.')
-      return
-    }
-
-    const storedUsers = JSON.parse(localStorage.getItem('users') || '[]')
-    
-    if (storedUsers.some((u: any) => u.email === email)) {
-      setError('Este correo ya está registrado.')
-      return
-    }
-
-    const newUser = { id: Date.now().toString(), name, email, role: 'user', created_at: new Date().toISOString(), updated_at: new Date().toISOString() }
-    const updatedUsers = [...storedUsers, { ...newUser, password }]
-    localStorage.setItem('users', JSON.stringify(updatedUsers))
-    
-    // Simulate login after registration
-    setAuth(newUser, 'mock-jwt-token')
-    navigate('/chat')
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 p-4 transition-colors duration-300">
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="max-w-md w-full bg-white dark:bg-gray-900 rounded-2xl shadow-xl overflow-hidden"
       >
         <div className="bg-gray-900 dark:bg-black p-6 text-center border-b border-gray-800">
           <h2 className="text-2xl font-bold text-white flex items-center justify-center gap-2">
-            <UserPlus className="w-6 h-6 text-auteco-red" />
+            <User className="w-6 h-6 text-auteco-red" />
             Crear Cuenta
           </h2>
           <p className="text-gray-400 mt-2 text-sm">Únete a la plataforma Pegasus Mechanics</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8 space-y-5">
-          {error && (
+        <form onSubmit={handleSubmit(onSubmit)} className="p-8 space-y-5">
+          {registerMutation.isSuccess && (
+            <div className="bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 p-3 rounded-lg text-sm border border-green-200 dark:border-green-800 flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 shrink-0" />
+              <span>Registro exitoso. Redirigiendo al inicio de sesión...</span>
+            </div>
+          )}
+
+          {errors.root && (
             <div className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm border border-red-200 dark:border-red-800 flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{error}</span>
+              <span>{errors.root.message}</span>
             </div>
           )}
 
@@ -75,13 +124,15 @@ export default function RegisterPage() {
                   <User className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
+                  {...register('nombre')}
                   type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
                   className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-auteco-red focus:border-auteco-red transition-all sm:text-sm"
                   placeholder="Juan Pérez"
                 />
               </div>
+              {errors.nombre && (
+                <p className="text-red-500 text-xs mt-1">{errors.nombre.message}</p>
+              )}
             </div>
 
             <div>
@@ -91,13 +142,15 @@ export default function RegisterPage() {
                   <Mail className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
+                  {...register('email')}
                   type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
                   className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-auteco-red focus:border-auteco-red transition-all sm:text-sm"
                   placeholder="juan@ejemplo.com"
                 />
               </div>
+              {errors.email && (
+                <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>
+              )}
             </div>
 
             <div>
@@ -107,13 +160,15 @@ export default function RegisterPage() {
                   <Lock className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
+                  {...register('password')}
                   type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
                   className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-auteco-red focus:border-auteco-red transition-all sm:text-sm"
                   placeholder="••••••••"
                 />
               </div>
+              {errors.password && (
+                <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>
+              )}
             </div>
 
             <div>
@@ -123,27 +178,67 @@ export default function RegisterPage() {
                   <Lock className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
+                  {...register('confirmPassword')}
                   type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
                   className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-auteco-red focus:border-auteco-red transition-all sm:text-sm"
                   placeholder="••••••••"
                 />
               </div>
+              {errors.confirmPassword && (
+                <p className="text-red-500 text-xs mt-1">{errors.confirmPassword.message}</p>
+              )}
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Empresa / Taller <span className="text-gray-400 font-normal">(opcional)</span></label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Building2 className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  {...register('empresa_taller')}
+                  type="text"
+                  className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-auteco-red focus:border-auteco-red transition-all sm:text-sm"
+                  placeholder="Tu taller (ej. MotoCenter)"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-start gap-2">
+              <input
+                {...register('acceptTerms')}
+                type="checkbox"
+                id="acceptTerms"
+                className="mt-1 h-4 w-4 rounded border-gray-300 text-auteco-red focus:ring-auteco-red"
+              />
+              <label htmlFor="acceptTerms" className="text-sm text-gray-600 dark:text-gray-400">
+                Acepto los términos y condiciones de la plataforma
+              </label>
+            </div>
+            {errors.acceptTerms && (
+              <p className="text-red-500 text-xs mt-1">{errors.acceptTerms.message}</p>
+            )}
           </div>
 
           <button
             type="submit"
-            className="w-full flex items-center justify-center gap-2 bg-gray-900 dark:bg-white dark:text-gray-900 text-white py-3 px-4 rounded-xl hover:bg-black dark:hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 transition-all shadow-md hover:shadow-lg active:scale-95 font-medium mt-6"
+            disabled={isSubmitting}
+            className="w-full flex items-center justify-center gap-2 bg-gray-900 dark:bg-white dark:text-gray-900 text-white py-3 px-4 rounded-xl hover:bg-black dark:hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 transition-all shadow-md hover:shadow-lg active:scale-95 font-medium mt-6 disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            Registrarse
+            {isSubmitting ? (
+              <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            ) : (
+              'Registrarse'
+            )}
           </button>
 
           <p className="text-center text-sm text-gray-600 dark:text-gray-400 mt-6">
             ¿Ya tienes una cuenta?{' '}
-            <button 
-              type="button" 
+            <button
+              type="button"
               onClick={() => navigate('/login')}
               className="text-auteco-red hover:text-red-700 font-semibold transition-colors"
             >
