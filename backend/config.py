@@ -1,48 +1,67 @@
-"""Configuración central del backend usando variables de entorno."""
+"""Configuración central del backend usando variables de entorno.
+
+Un solo sistema: la clase Settings de pydantic_settings lee el archivo .env
+y expone todas las variables como atributos tipados.
+"""
 import os
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
 
 load_dotenv()
 
-# === SUPABASE ===
-SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
-SUPABASE_SERVICE_KEY: str = os.getenv("SUPABASE_SERVICE_KEY", "")
 
-# === OPENAI ===
-OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
-LLM_MODEL: str = os.getenv("LLM_MODEL", "gpt-4o-mini")
-EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
+class Settings(BaseSettings):
+    # === SUPABASE ===
+    SUPABASE_URL: str = ""
+    SUPABASE_SERVICE_KEY: str = ""
 
-# === VECTOR STORE ===
-# Tabla real en Supabase con columnas: id, texto (JSON), fuente, pagina, datos (JSONB), embedding
-VECTOR_TABLE: str = os.getenv("VECTOR_TABLE", "manuales_chunks")
-VECTOR_MATCH_COUNT: int = int(os.getenv("VECTOR_MATCH_COUNT", "5"))
+    # === OPENAI / LLM ===
+    OPENAI_API_KEY: str = ""
+    LLM_MODEL: str = "gpt-4o-mini"
+    EMBEDDING_MODEL: str = "text-embedding-3-small"
 
-# === AUTH ===
-JWT_SECRET: str = os.getenv("JWT_SECRET", "change-me")
-JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
+    # === VECTOR STORE (Supabase table) ===
+    VECTOR_TABLE: str = "manuales_chunks"
+    VECTOR_MATCH_COUNT: int = 5
+
+    # === DATABASE (PostgreSQL) ===
+    DATABASE_URL: str = "postgresql+asyncpg://motorconnect:localdev123@db:5432/motorconnect_db"
+
+    # === AUTH ===
+    JWT_SECRET: str = "change-me-in-production"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRATION_HOURS: int = 24
+
+    # === BACKEND ===
+    API_PORT: int = 8000
+
+    model_config = {"env_file": ".env", "extra": "ignore"}
+
+
+settings = Settings()
+
+# ── Variables globales (alias para compatibilidad con imports existentes) ──
+# El código del RAG (retriever.py, generator.py) importa directamente estas
+# variables, así que las exponemos como alias del objeto settings.
+SUPABASE_URL = settings.SUPABASE_URL
+SUPABASE_SERVICE_KEY = settings.SUPABASE_SERVICE_KEY
+OPENAI_API_KEY = settings.OPENAI_API_KEY
+LLM_MODEL = settings.LLM_MODEL
+EMBEDDING_MODEL = settings.EMBEDDING_MODEL
+VECTOR_TABLE = settings.VECTOR_TABLE
+VECTOR_MATCH_COUNT = settings.VECTOR_MATCH_COUNT
+
 
 def validate_config() -> None:
     """Verifica que las variables críticas estén configuradas."""
     missing = []
-    if not SUPABASE_URL:
+    if not settings.SUPABASE_URL:
         missing.append("SUPABASE_URL")
-    if not SUPABASE_SERVICE_KEY:
+    if not settings.SUPABASE_SERVICE_KEY:
         missing.append("SUPABASE_SERVICE_KEY")
-    if not OPENAI_API_KEY:
+    if not settings.OPENAI_API_KEY:
         missing.append("OPENAI_API_KEY")
     if missing:
         raise RuntimeError(
             f"❌ Variables de entorno faltantes en .env: {', '.join(missing)}"
         )
-
-class Settings(BaseSettings):
-    DATABASE_URL: str = "postgresql+asyncpg://motorconnect:localdev123@db:5432/motorconnect_db"
-    JWT_SECRET: str = "your-super-secret-key-change-in-production-123456789"
-    JWT_ALGORITHM: str = "HS256"
-    JWT_EXPIRATION_HOURS: int = 24
-
-    model_config = {"env_file": ".env", "extra": "ignore"}
-
-settings = Settings()
