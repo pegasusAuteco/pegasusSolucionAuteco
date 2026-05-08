@@ -17,6 +17,23 @@ export interface LoginCredentials {
   password: string
 }
 
+export interface RegisterData {
+  nombre: string
+  email: string
+  password: string
+  accept_terms: boolean
+  empresa_taller?: string
+}
+
+export interface RegisterResponseData {
+  id: number
+  nombre: string
+  email: string
+  rol: string
+  empresa_taller?: string
+  created_at: string
+}
+
 export interface Message {
   id: string
   conversation_id: string

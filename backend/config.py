@@ -1,6 +1,7 @@
 """Configuración central del backend usando variables de entorno."""
 import os
 from dotenv import load_dotenv
+from pydantic_settings import BaseSettings
 
 load_dotenv()
 
@@ -22,7 +23,6 @@ VECTOR_MATCH_COUNT: int = int(os.getenv("VECTOR_MATCH_COUNT", "5"))
 JWT_SECRET: str = os.getenv("JWT_SECRET", "change-me")
 JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
 
-
 def validate_config() -> None:
     """Verifica que las variables críticas estén configuradas."""
     missing = []
@@ -36,3 +36,13 @@ def validate_config() -> None:
         raise RuntimeError(
             f"❌ Variables de entorno faltantes en .env: {', '.join(missing)}"
         )
+
+class Settings(BaseSettings):
+    DATABASE_URL: str = "postgresql+asyncpg://motorconnect:localdev123@db:5432/motorconnect_db"
+    JWT_SECRET: str = "your-super-secret-key-change-in-production-123456789"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRATION_HOURS: int = 24
+
+    model_config = {"env_file": ".env", "extra": "ignore"}
+
+settings = Settings()

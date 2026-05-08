@@ -2,11 +2,26 @@
 Punto de entrada principal del backend FastAPI.
 Registra todos los routers y configura middleware.
 """
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+
+from database import engine, Base
+from auth.router import router as auth_router
 from config import validate_config
 from chat.router import router as chat_router
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    from auth.models import User
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+    await engine.dispose()
 
 # Validar configuración al arrancar
 validate_config()
@@ -15,6 +30,7 @@ app = FastAPI(
     title="Pegasus API",
     description="Agente IA con RAG para soporte técnico de motos Auteco",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -25,9 +41,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    cleaned_errors = []
+    for error in exc.errors():
+        normalized_error = dict(error)
+        ctx = normalized_error.get("ctx")
+        if isinstance(ctx, dict):
+            normalized_error["ctx"] = {
+                key: str(value) if isinstance(value, Exception) else value
+                for key, value in ctx.items()
+            }
+        cleaned_errors.append(normalized_error)
+    return JSONResponse(status_code=400, content={"detail": cleaned_errors})
+
+
 # Registrar routers
-# Nota: Vite proxy reescribe /api → / en el backend
-# Por eso el router usa el prefix /chat directamente (ya definido en el router)
+app.include_router(auth_router)
 app.include_router(chat_router)
 
 

@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { AuthResponse, LoginCredentials, Conversation, Message, UserStats, AdminStats } from '@types'
+import type { AuthResponse, LoginCredentials, RegisterData, RegisterResponseData, Conversation, Message, UserStats, AdminStats } from '@types'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
@@ -17,7 +17,10 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const requestUrl: string = error.config?.url || ''
+    const isLoginRequest = requestUrl.includes('/auth/login')
+
+    if (error.response?.status === 401 && !isLoginRequest) {
       localStorage.removeItem('token')
       window.location.href = '/login'
     }
@@ -28,6 +31,8 @@ api.interceptors.response.use(
 export const authService = {
   login: (credentials: LoginCredentials) =>
     api.post<AuthResponse>('/auth/login', credentials).then((r) => r.data),
+  register: (data: RegisterData) =>
+    api.post<RegisterResponseData>('/auth/register', data).then((r) => r.data),
   profile: () => api.get<{ user: import('@types').User }>('/auth/profile').then((r) => r.data.user),
 }
 
