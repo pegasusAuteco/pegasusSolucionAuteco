@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import MotorcycleCard from './MotorcycleCard';
 import { Search, Plus } from 'lucide-react';
+import { useChatStore } from '@store/chatStore';
 
 const MOCK_MOTOS = [
   {
@@ -103,6 +104,13 @@ const MOCK_MOTOS = [
 
 const MotorcycleList = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const setPendingChatInput = useChatStore((s) => s.setPendingChatInput);
+
+  const handleMotoClick = (name: string, displacement: string) => {
+    setPendingChatInput(
+      `Cuéntame sobre la ${name} ${displacement}, ¿qué información técnica tienes disponible?`
+    );
+  };
   
   const filteredMotos = MOCK_MOTOS.filter(moto => 
     moto.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -131,7 +139,11 @@ const MotorcycleList = () => {
 
       <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6 pb-8">
         {filteredMotos.map(moto => (
-          <MotorcycleCard key={moto.id} {...moto} />
+          <MotorcycleCard
+            key={moto.id}
+            {...moto}
+            onClick={() => handleMotoClick(moto.name, moto.specs.displacement)}
+          />
         ))}
       </div>
     </div>

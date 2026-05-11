@@ -18,10 +18,21 @@ from chat.router import router as chat_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from auth.models import User
+    from logs.connections import get_redis, get_mongo_db
+    from logs.log_service import ConversationLogService
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+    redis = await get_redis()
+    mongo_db = await get_mongo_db()
+    app.state.log_service = ConversationLogService(redis, mongo_db)
+    app.state.mongo_db = mongo_db
+
     yield
+
     await engine.dispose()
+    await redis.aclose()
 
 # Validar configuración al arrancar
 validate_config()

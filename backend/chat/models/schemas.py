@@ -8,6 +8,10 @@ class ConversationCreate(BaseModel):
     title: str | None = None
 
 
+class ConversationUpdate(BaseModel):
+    title: str
+
+
 class ConversationResponse(BaseModel):
     id: str
     title: str

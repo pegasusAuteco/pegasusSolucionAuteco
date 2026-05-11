@@ -40,27 +40,26 @@ def build_rag_prompt(query: str, context_chunks: list[str]) -> str:
         return f"Consulta del usuario: {query}"
 
 
-def generate_answer(query: str, context_chunks: list[str]) -> str:
-    """
-    Genera la respuesta del asistente usando RAG.
-    
-    Args:
-        query: Pregunta del usuario
-        context_chunks: Lista de textos relevantes del vector store
-    
-    Returns:
-        Respuesta generada por el LLM
-    """
+def generate_answer(
+    query: str,
+    context_chunks: list[str],
+    history: list[dict] | None = None,
+) -> str:
     client = _get_openai()
     user_prompt = build_rag_prompt(query, context_chunks)
 
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+
+    if history:
+        for msg in history:
+            messages.append({"role": msg["role"], "content": msg["content"]})
+
+    messages.append({"role": "user", "content": user_prompt})
+
     response = client.chat.completions.create(
         model=LLM_MODEL,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_prompt},
-        ],
-        temperature=0.3,   # Más determinístico para respuestas técnicas
+        messages=messages,
+        temperature=0.3,
         max_tokens=1024,
     )
 

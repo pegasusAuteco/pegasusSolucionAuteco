@@ -36,7 +36,7 @@ services:
 
   # Redis - Hot Sessions
   redis:
-    image: redis/redis-stack:latest
+    image: redis:7-alpine
     container_name: motorconnect-redis
     ports:
       - "6379:6379"
@@ -78,9 +78,11 @@ services:
       ENVIRONMENT: ${ENVIRONMENT:-development}
       DEBUG: ${DEBUG:-False}
       REDIS_URL: redis://redis:6379/0
-      MONGO_URI: mongodb://${MONGO_USER:-motorconnect}:${MONGO_PASSWORD:-localdev123}@mongodb:27017/motorconnect_logs
+      MONGO_URI: mongodb://${MONGO_USER:-motorconnect}:${MONGO_PASSWORD:-localdev123}@mongodb:27017/motorconnect_logs?authSource=admin
       MONGO_DB_NAME: motorconnect_logs
       GROQ_API_KEY: ${GROQ_API_KEY:-}
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY:-}
     ports:
       - "8001:8000"
     depends_on:

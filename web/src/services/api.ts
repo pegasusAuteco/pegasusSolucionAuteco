@@ -40,6 +40,12 @@ export const chatService = {
   list: () => api.get<Conversation[]>('/chat/conversations').then((r) => r.data),
   create: (title?: string) =>
     api.post<Conversation>('/chat/conversations', { title }).then((r) => r.data),
+  rename: (conversationId: string, title: string) =>
+    api.patch<Conversation>(`/chat/conversations/${conversationId}`, { title }).then((r) => r.data),
+  remove: (conversationId: string) =>
+    api.delete(`/chat/conversations/${conversationId}`),
+  removeAll: () =>
+    api.delete<{ deleted: number }>('/chat/conversations').then((r) => r.data),
   getMessages: (conversationId: string) =>
     api.get<Message[]>(`/chat/conversations/${conversationId}/messages`).then((r) => r.data),
   sendMessage: (conversationId: string, content: string) =>

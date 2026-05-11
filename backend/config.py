@@ -9,7 +9,6 @@ from pydantic_settings import BaseSettings
 
 load_dotenv()
 
-
 class Settings(BaseSettings):
     # === SUPABASE ===
     SUPABASE_URL: str = ""

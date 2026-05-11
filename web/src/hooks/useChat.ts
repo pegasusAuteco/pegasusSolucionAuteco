@@ -40,6 +40,49 @@ export function useCreateConversation() {
   })
 }
 
+export function useRenameConversation() {
+  const queryClient = useQueryClient()
+  const renameConversation = useChatStore((s) => s.renameConversation)
+
+  return useMutation({
+    mutationFn: ({ conversationId, title }: { conversationId: string; title: string }) =>
+      chatService.rename(conversationId, title),
+    onSuccess: (_, { conversationId, title }) => {
+      renameConversation(conversationId, title)
+      queryClient.invalidateQueries({ queryKey: ['conversations'] })
+    },
+  })
+}
+
+export function useDeleteConversation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (conversationId: string) => chatService.remove(conversationId),
+    onSuccess: (_, conversationId) => {
+      const { activeConversationId, setActiveConversation } = useChatStore.getState()
+      if (activeConversationId === conversationId) setActiveConversation(null)
+      queryClient.invalidateQueries({ queryKey: ['conversations'] })
+    },
+  })
+}
+
+export function useDeleteAllConversations() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: () => chatService.removeAll(),
+    onSuccess: (data) => {
+      console.log(`🗑️ ${data.deleted} conversaciones eliminadas`)
+      const { setActiveConversation, setConversations, setMessages } = useChatStore.getState()
+      setConversations([])
+      setMessages([])
+      setActiveConversation(null)
+      queryClient.invalidateQueries({ queryKey: ['conversations'] })
+    },
+  })
+}
+
 export function useSendMessage() {
   const addMessage = useChatStore((s) => s.addMessage)
   const setIsLoading = useChatStore((s) => s.setIsLoading)
@@ -58,8 +101,7 @@ export function useSendMessage() {
         created_at: new Date().toISOString()
       });
     },
-    onSuccess: (data) => {
-      addMessage(data)
+    onSuccess: () => {
       setIsLoading(false)
     },
     onError: () => setIsLoading(false),

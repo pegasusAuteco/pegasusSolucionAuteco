@@ -1,16 +1,16 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 
-const MotorcycleCard = ({ name, image, specs }) => {
+const MotorcycleCard = ({ name, image, specs, onClick }) => {
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
+      onClick={onClick}
       className="bg-white dark:bg-gray-900/60 dark:backdrop-blur-md rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden cursor-pointer group transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:hover:shadow-[0_0_25px_rgba(225,6,0,0.15)] hover:border-auteco-red/30 dark:hover:border-auteco-red/30"
     >
       {/* Image */}
       <div className="h-28 md:h-44 bg-gray-50 dark:bg-gray-950/50 flex items-center justify-center p-2 md:p-4 relative overflow-hidden transition-colors duration-300">
-        {/* Tech grid background overlay */}
         <div className="absolute inset-0 opacity-5 dark:opacity-10 bg-[radial-gradient(#888_1px,transparent_1px)] dark:bg-[radial-gradient(#444_1px,transparent_1px)] [background-size:16px_16px]"></div>
         <img
           src={image}
