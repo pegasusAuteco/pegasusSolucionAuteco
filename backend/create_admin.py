@@ -1,11 +1,14 @@
 import asyncio
 from sqlalchemy import select
-from database import async_session_factory
+from database import async_session_factory, engine, Base
 from auth.models import User, UserRole
 from auth.service import AuthService
-from config import settings
 
 async def create_admin():
+    # Asegurar que las tablas existan
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
     email = "admin@pegasus.com"
     password = "AdminPassword123!"
     nombre = "Administrador"
