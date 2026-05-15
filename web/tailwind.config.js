@@ -10,6 +10,8 @@ export default {
       colors: {
         'auteco-red': '#E10600',
         'auteco-blue': '#1F3B73',
+        'pegasus-blue': '#18468B',
+        'pegasus-gray': '#C7C8CA',
         'bg-light': '#F5F5F5',
         primary: {
           50: '#f0f9ff',

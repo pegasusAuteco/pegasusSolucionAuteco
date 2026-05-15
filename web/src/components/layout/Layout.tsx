@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import ChatContainer from '../chat/ChatContainer';
 import MotorcycleList from '../inventory/MotorcycleList';
-import { MessageSquare, Plus, LogOut, Bike, Menu, X, BarChart3 } from 'lucide-react';
+import { MessageSquare, Plus, LogOut, Bike, X, BarChart3, Wrench } from 'lucide-react';
 import { useAuthStore } from '@store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { useChatStore } from '@store/chatStore';
@@ -13,6 +13,7 @@ import {
   useDeleteAllConversations,
 } from '@hooks/useChat';
 import AdminPage from '@pages/AdminPage';
+import CompactMechanicQueue from '../workshop/CompactMechanicQueue';
 
 const Layout = () => {
   const user = useAuthStore((s) => s.user);
@@ -21,8 +22,8 @@ const Layout = () => {
   const isAdmin = user?.role === 'admin';
 
   const [chatHistoryOpen, setChatHistoryOpen] = useState(false);
-  const [mobileTab, setMobileTab] = useState<'chat' | 'inventory'>('chat');
-  const [activePanelDesktop, setActivePanelDesktop] = useState<'inventory' | 'metrics'>('inventory');
+  const [mobileTab, setMobileTab] = useState<'chat' | 'inventory' | 'queue'>('chat');
+  const [activePanelDesktop, setActivePanelDesktop] = useState<'inventory' | 'metrics' | 'queue'>('queue');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -197,6 +198,13 @@ const Layout = () => {
             <MessageSquare className="w-4 h-4" />
             <span className="hidden sm:inline">Chats</span>
           </button>
+          <button
+            onClick={() => navigate('/workshop')}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium bg-pegasus-blue/10 text-pegasus-blue hover:bg-pegasus-blue/20 transition-colors"
+          >
+            <Wrench className="w-4 h-4" />
+            <span className="hidden sm:inline">Taller Pegasus</span>
+          </button>
         </div>
         <div className="flex items-center gap-4 text-sm font-medium">
           <span className="hidden sm:inline text-gray-600 dark:text-gray-300">
@@ -231,21 +239,32 @@ const Layout = () => {
           <ChatContainer />
         </div>
 
-        {/* Right: Inventory / Admin */}
+        {/* Right: Inventory / Admin / Queue */}
         <div className="w-[60%] flex flex-col overflow-hidden">
-          {isAdmin && (
-            <div className="flex items-center gap-1 px-4 pt-4 pb-0 shrink-0 border-b border-gray-100 dark:border-gray-800">
-              <button
-                onClick={() => setActivePanelDesktop('inventory')}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-t-xl text-sm font-semibold transition-all border-b-2 ${
-                  activePanelDesktop === 'inventory'
-                    ? 'border-auteco-red text-auteco-red bg-red-50/50 dark:bg-red-900/10'
-                    : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
-                }`}
-              >
-                <Bike className="w-4 h-4" />
-                Inventario
-              </button>
+          <div className="flex items-center gap-1 px-4 pt-4 pb-0 shrink-0 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+            <button
+              onClick={() => setActivePanelDesktop('inventory')}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-t-xl text-sm font-semibold transition-all border-b-2 ${
+                activePanelDesktop === 'inventory'
+                  ? 'border-auteco-red text-auteco-red bg-red-50/50 dark:bg-red-900/10'
+                  : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+              }`}
+            >
+              <Bike className="w-4 h-4" />
+              Inventario
+            </button>
+            <button
+              onClick={() => setActivePanelDesktop('queue')}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-t-xl text-sm font-semibold transition-all border-b-2 ${
+                activePanelDesktop === 'queue'
+                  ? 'border-auteco-red text-auteco-red bg-red-50/50 dark:bg-red-900/10'
+                  : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+              }`}
+            >
+              <Wrench className="w-4 h-4" />
+              En Reparación
+            </button>
+            {isAdmin && (
               <button
                 onClick={() => setActivePanelDesktop('metrics')}
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-t-xl text-sm font-semibold transition-all border-b-2 ${
@@ -257,10 +276,12 @@ const Layout = () => {
                 <BarChart3 className="w-4 h-4" />
                 Métricas Admin
               </button>
-            </div>
-          )}
-          <div className="flex-1 overflow-y-auto">
-            {isAdmin && activePanelDesktop === 'metrics' ? <AdminPage /> : <MotorcycleList />}
+            )}
+          </div>
+          <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-950">
+            {activePanelDesktop === 'metrics' && isAdmin && <AdminPage />}
+            {activePanelDesktop === 'inventory' && <MotorcycleList />}
+            {activePanelDesktop === 'queue' && <CompactMechanicQueue isGrid={true} />}
           </div>
         </div>
       </div>
@@ -288,9 +309,14 @@ const Layout = () => {
               <MotorcycleList />
             </div>
           )}
+          {mobileTab === 'queue' && (
+            <div className="h-full overflow-y-auto">
+              <CompactMechanicQueue />
+            </div>
+          )}
         </div>
 
-        <div className="bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 px-6 py-3 flex justify-around items-center transition-colors duration-300 shrink-0">
+        <div className="bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 px-4 py-3 flex justify-around items-center transition-colors duration-300 shrink-0">
           <button
             onClick={() => setMobileTab('chat')}
             className={`flex flex-col items-center gap-1 ${mobileTab === 'chat' ? 'text-auteco-red font-bold' : 'text-gray-400 dark:text-gray-500'}`}
@@ -304,6 +330,20 @@ const Layout = () => {
           >
             <Bike className="w-6 h-6" />
             <span className="text-[10px] uppercase">Motos</span>
+          </button>
+          <button
+            onClick={() => setMobileTab('queue')}
+            className={`flex flex-col items-center gap-1 ${mobileTab === 'queue' ? 'text-auteco-red font-bold' : 'text-gray-400 dark:text-gray-500'}`}
+          >
+            <Wrench className="w-6 h-6" />
+            <span className="text-[10px] uppercase">Cola</span>
+          </button>
+          <button
+            onClick={() => navigate('/workshop')}
+            className="flex flex-col items-center gap-1 text-gray-400 dark:text-gray-500"
+          >
+            <Plus className="w-6 h-6" />
+            <span className="text-[10px] uppercase">Nuevo</span>
           </button>
         </div>
       </div>

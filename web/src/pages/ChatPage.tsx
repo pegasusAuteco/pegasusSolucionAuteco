@@ -5,6 +5,7 @@ import { useChatStore } from '@store/chatStore'
 import ChatBubble from '@components/chat/ChatBubble'
 import ChatInput from '@components/chat/ChatInput'
 import EmptyState from '@components/shared/EmptyState'
+import CompactMechanicQueue from '@components/workshop/CompactMechanicQueue'
 
 export default function ChatPage() {
   const { activeConversationId, messages, isLoading, setActiveConversation } = useChatStore()
@@ -31,12 +32,13 @@ export default function ChatPage() {
 
   return (
     <div className="flex h-[calc(100vh-4rem)] md:h-screen">
-      <aside className="hidden w-72 flex-col border-r bg-gray-50 md:flex">
-        <div className="flex items-center justify-between border-b p-4">
-          <h2 className="font-semibold text-gray-700">Conversaciones</h2>
+      {/* Left Sidebar: Conversations */}
+      <aside className="hidden w-72 flex-col border-r bg-gray-50 dark:bg-gray-900 md:flex">
+        <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 p-4">
+          <h2 className="font-semibold text-gray-700 dark:text-gray-300">Conversaciones</h2>
           <button
             onClick={handleNewChat}
-            className="rounded-lg bg-primary-500 p-1.5 text-white hover:bg-primary-600"
+            className="rounded-lg bg-auteco-red p-1.5 text-white hover:bg-red-700 transition-colors"
           >
             <Plus className="h-4 w-4" />
           </button>
@@ -46,12 +48,12 @@ export default function ChatPage() {
             <button
               key={conv.id}
               onClick={() => setActiveConversation(conv.id)}
-              className={`w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-gray-200 ${
-                activeConversationId === conv.id ? 'bg-gray-200 font-medium' : ''
+              className={`w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-gray-200 dark:hover:bg-gray-800 ${
+                activeConversationId === conv.id ? 'bg-gray-200 dark:bg-gray-800 font-medium' : ''
               }`}
             >
-              <p className="truncate">{conv.title || 'Nueva conversación'}</p>
-              <p className="text-xs text-gray-400">
+              <p className="truncate dark:text-white">{conv.title || 'Nueva conversación'}</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500">
                 {new Date(conv.created_at).toLocaleDateString()}
               </p>
             </button>
@@ -59,7 +61,8 @@ export default function ChatPage() {
         </div>
       </aside>
 
-      <div className="flex flex-1 flex-col">
+      {/* Center: Chat View */}
+      <div className="flex flex-1 flex-col border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950">
         {!activeConversationId ? (
           <div className="flex flex-1 items-center justify-center">
             <EmptyState
@@ -76,8 +79,8 @@ export default function ChatPage() {
               ))}
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="rounded-2xl rounded-bl-sm bg-gray-100 px-4 py-2">
-                    <p className="text-sm text-gray-500">Escribiendo...</p>
+                  <div className="rounded-2xl rounded-bl-sm bg-gray-100 dark:bg-gray-800 px-4 py-2">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Escribiendo...</p>
                   </div>
                 </div>
               )}
@@ -87,6 +90,11 @@ export default function ChatPage() {
           </>
         )}
       </div>
+
+      {/* Right Sidebar: Mechanic Queue */}
+      <aside className="hidden w-80 flex-col bg-gray-50 dark:bg-gray-900 md:flex border-l border-gray-200 dark:border-gray-800">
+        <CompactMechanicQueue />
+      </aside>
     </div>
   )
 }
