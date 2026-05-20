@@ -6,10 +6,9 @@ import ToastViewport from '@components/shared/ToastViewport'
 
 const LoginPage = lazy(() => import('@pages/LoginPage'))
 const RegisterPage = lazy(() => import('@pages/RegisterPage'))
-const ChatPage = lazy(() => import('@pages/ChatPage'))
 const HistoryPage = lazy(() => import('@pages/HistoryPage'))
 const ProfilePage = lazy(() => import('@pages/ProfilePage'))
-const AdminPage = lazy(() => import('@pages/AdminPage'))
+const WorkshopPage = lazy(() => import('@pages/WorkshopPage'))
 
 export default function App() {
   return (
@@ -25,6 +24,7 @@ export default function App() {
             <Route path="/chat" element={<Layout />} />
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/workshop" element={<WorkshopPage />} />
             <Route path="/admin" element={<Navigate to="/chat" replace />} />
           </Route>
           <Route path="*" element={<Navigate to="/chat" replace />} />

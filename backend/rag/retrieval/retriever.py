@@ -14,7 +14,7 @@ Estructura de cada fila en manuales_chunks:
 import json
 from openai import OpenAI
 from config import OPENAI_API_KEY, EMBEDDING_MODEL
-from vector_store.supabase_client import search_similar_chunks
+from vector_store.supabase_client import search_similar_chunks, search_similar_fallas
 
 _openai_client: OpenAI | None = None
 
@@ -99,17 +99,49 @@ def _format_chunk(chunk: dict) -> str:
     return "\n".join(parts)
 
 
+def _format_falla(falla: dict) -> str:
+    """Formatea una fila de fallas_diagnostico para el LLM."""
+    parts = [f"### POSIBLE FALLA: {falla.get('componente')} (Modelo: {falla.get('modelo')})"]
+    if falla.get("sintoma"):
+        parts.append(f"Síntoma: {falla.get('sintoma')}")
+    if falla.get("causa"):
+        parts.append(f"Causa: {falla.get('causa')}")
+    if falla.get("solucion"):
+        parts.append(f"Solución propuesta: {falla.get('solucion')}")
+    
+    pasos = falla.get("pasos_revision")
+    if pasos and isinstance(pasos, list):
+        parts.append("Paso a paso para revisión:")
+        for i, paso in enumerate(pasos, 1):
+            parts.append(f"{i}. {paso}")
+    
+    return "\n".join(parts)
+
+
 def retrieve_context(query: str, top_k: int = 5) -> list[str]:
     """
     Pipeline de recuperación RAG:
     1. Genera embedding de la pregunta del usuario
-    2. Busca los top_k chunks más similares en Supabase
-    3. Formatea cada chunk como texto legible para el LLM
+    2. Busca en la tabla de fallas_diagnostico (prioridad alta)
+    3. Busca en manuales_chunks (información técnica general)
+    4. Formatea y combina resultados
     """
     embedding = embed_query(query)
+    
+    # 1. Buscar en base de datos de fallas (específica)
+    fallas = search_similar_fallas(embedding, top_k=2)
+    
+    # 2. Buscar en manuales (general)
     chunks = search_similar_chunks(embedding, top_k=top_k)
 
     context_texts = []
+    
+    # Añadir fallas primero (prioridad diagnóstica)
+    for f in fallas:
+        formatted = _format_falla(f)
+        context_texts.append(formatted)
+        
+    # Añadir manuales
     for chunk in chunks:
         formatted = _format_chunk(chunk)
         if formatted.strip():

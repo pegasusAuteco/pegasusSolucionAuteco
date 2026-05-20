@@ -1,0 +1,230 @@
+[
+  {
+    "modelo": "Benelli 180S",
+    "fallas": [
+      {
+        "componente": "Sensor de oxígeno (Sonda Lambda)",
+        "sintoma": "La moto se apaga, pierde fuerza o se ahoga al calentar.",
+        "causa": "Porosidad en el sensor que falla con altas temperaturas.",
+        "solucion": "Reemplazo del sensor.",
+        "pasos_revision": [
+          "Encender y calentar a temperatura de operación.",
+          "Medir voltaje en terminales del sensor (rango 0.1V - 0.9V).",
+          "Verificar continuidad del cableado hacia la ECU.",
+          "Si el valor es estático, reemplazar sensor."
+        ]
+      },
+      {
+        "componente": "Inyección Electrónica",
+        "sintoma": "Humo negro y alto consumo.",
+        "causa": "Mala calibración del cuerpo de aceleración o inyector sucio.",
+        "solucion": "Limpieza y calibración técnica.",
+        "pasos_revision": [
+          "Limpiar cuerpo de aceleración con spray dieléctrico.",
+          "Verificar estanqueidad del inyector.",
+          "Realizar reset de parámetros con escáner."
+        ]
+      }
+    ]
+  },
+  {
+    "modelo": "Benelli Imperiale 400",
+    "fallas": [
+      {
+        "componente": "Sistema Eléctrico (Tablero)",
+        "sintoma": "Lecturas erróneas o testigos que parpadean sin causa.",
+        "causa": "Conexiones flojas o humedad en conectores traseros.",
+        "solucion": "Limpieza y ajuste de conectores.",
+        "pasos_revision": [
+          "Desmontar farola para acceder a conectores de tablero.",
+          "Aplicar limpia-contactos y verificar pines doblados.",
+          "Asegurar mazo de cables para evitar vibraciones."
+        ]
+      },
+      {
+        "componente": "Oscilación Frontal (Wobble)",
+        "sintoma": "Vibración en el manubrio a altas velocidades.",
+        "causa": "Desbalanceo de llanta o ajuste de cunas de dirección.",
+        "solucion": "Balanceo y ajuste de dirección.",
+        "pasos_revision": [
+          "Verificar presión de llanta delantera.",
+          "Realizar balanceo dinámico de la rueda.",
+          "Ajustar tuerca de la columna de dirección según torque de manual."
+        ]
+      }
+    ]
+  },
+  {
+    "modelo": "Kawasaki Ninja 400",
+    "fallas": [
+      {
+        "componente": "Embrague (Clutch)",
+        "sintoma": "Deslizamiento del embrague en marchas altas.",
+        "causa": "Resortes originales con baja tensión o discos quemados.",
+        "solucion": "Instalar resortes reforzados y nuevos discos.",
+        "pasos_revision": [
+          "Medir grosor de discos de fricción.",
+          "Revisar planitud de discos de acero.",
+          "Instalar resortes de mayor K (tensión)."
+        ]
+      },
+      {
+        "componente": "Sello de bomba de agua",
+        "sintoma": "Goteo de refrigerante por el orificio de drenaje.",
+        "causa": "Falla prematura del sello mecánico.",
+        "solucion": "Cambio de sello mecánico y empaques.",
+        "pasos_revision": [
+          "Drenar refrigerante.",
+          "Retirar tapa de bomba de agua.",
+          "Extraer sello viejo con herramienta especial.",
+          "Instalar sello nuevo lubricado con refrigerante."
+        ]
+      }
+    ]
+  },
+  {
+    "modelo": "TVS Raider 125",
+    "fallas": [
+      {
+        "componente": "Tablero Digital",
+        "sintoma": "Información borrosa o congelada.",
+        "causa": "Humedad o error de firmware.",
+        "solucion": "Secado de placa o actualización de software.",
+        "pasos_revision": [
+          "Verificar voltaje de batería constante.",
+          "Revisar masas del chasis.",
+          "Consultar actualización de software en centro autorizado."
+        ]
+      },
+      {
+        "componente": "Encendido ISG (Silencioso)",
+        "sintoma": "La moto no arranca pero luces funcionan.",
+        "causa": "Falla en sensor Hall o controlador ISG.",
+        "solucion": "Reemplazo de sensor o controlador.",
+        "pasos_revision": [
+          "Probar batería con carga.",
+          "Medir señales del sensor Hall en el estator.",
+          "Verificar fusibles principales del sistema ISG."
+        ]
+      }
+    ]
+  },
+  {
+    "modelo": "Kymco Agility 125 / Go",
+    "fallas": [
+      {
+        "componente": "Válvula de Admisión",
+        "sintoma": "Pérdida de compresión, no sostiene el mínimo.",
+        "causa": "Desgaste excesivo ('se chupa') de la válvula.",
+        "solucion": "Calibración o cambio de culata/válvula.",
+        "pasos_revision": [
+          "Medir compresión en frío.",
+          "Ajustar holgura (0.10mm).",
+          "Si no mejora, realizar prueba de fugas en cilindro."
+        ]
+      },
+      {
+        "componente": "Variador (Transmisión)",
+        "sintoma": "Vibración al arrancar o ruidos metálicos.",
+        "causa": "Dados (rollers) planos o guías desgastadas.",
+        "solucion": "Mantenimiento preventivo y cambio de piezas de desgaste.",
+        "pasos_revision": [
+          "Limpiar polvo de asbesto de la carcasa.",
+          "Verificar cara del variador por surcos.",
+          "Cambiar dados si presentan caras planas."
+        ]
+      }
+    ]
+  },
+  {
+    "modelo": "Victory MRX 150 / Arizona",
+    "fallas": [
+      {
+        "componente": "Carburación",
+        "sintoma": "Dificultad para encender, tirones en baja.",
+        "causa": "Suciedad en boquereles o mala regulación de aire.",
+        "solucion": "Limpieza profunda y sincronización.",
+        "pasos_revision": [
+          "Desmontar carburador.",
+          "Limpiar chicleres de alta y baja.",
+          "Ajustar tornillo de aire (promedio 2.5 vueltas)."
+        ]
+      },
+      {
+        "componente": "Bomba de Freno Trasera",
+        "sintoma": "Pedal de freno se va al fondo (esponjoso).",
+        "causa": "Aire en el sistema o sellos de bomba fallando.",
+        "solucion": "Purga de sistema o cambio de chupa de bomba.",
+        "pasos_revision": [
+          "Verificar fugas en mangueras.",
+          "Realizar purga de líquido DOT4.",
+          "Si persiste, cambiar kit de reparación de bomba."
+        ]
+      }
+    ]
+  },
+  {
+    "modelo": "TVS Sport 100",
+    "fallas": [
+      {
+        "componente": "Sistema de Carga (Estator)",
+        "sintoma": "Batería se descarga frecuentemente.",
+        "causa": "Bobinas de carga quemadas.",
+        "solucion": "Reemplazo de estator.",
+        "pasos_revision": [
+          "Medir resistencia de bobinas con multímetro.",
+          "Verificar voltaje de salida de regulador (14.2V - 14.5V).",
+          "Revisar conectores por recalentamiento."
+        ]
+      }
+    ]
+  },
+  {
+    "modelo": "TVS Apache 200 (RR/4V)",
+    "fallas": [
+      {
+        "componente": "Descompresor de Motor",
+        "sintoma": "Ruido tipo 'clic-clic' metálico en culata.",
+        "causa": "Falla en el mecanismo de descompresión automática.",
+        "solucion": "Ajuste o cambio de árbol de levas.",
+        "pasos_revision": [
+          "Retirar tapa de válvulas.",
+          "Inspeccionar resorte del descompresor.",
+          "Verificar juego axial del árbol de levas."
+        ]
+      }
+    ]
+  },
+  {
+    "modelo": "Zontes 368G",
+    "fallas": [
+      {
+        "componente": "Electrónica (Sensores TPMS)",
+        "sintoma": "Alerta de presión de llantas constante.",
+        "causa": "Descalibración o interferencia electromagnética.",
+        "solucion": "Reseteo de sistema o cambio de sensor.",
+        "pasos_revision": [
+          "Verificar presión real con manómetro manual.",
+          "Re-vincular sensores desde el tablero.",
+          "Revisar batería del sensor interno."
+        ]
+      }
+    ]
+  },
+  {
+    "modelo": "Advance R 110",
+    "fallas": [
+      {
+        "componente": "Embrague Automático (Centrífugo)",
+        "sintoma": "Golpe al meter cambios o moto se apaga al frenar.",
+        "causa": "Resortes de zapatas estirados.",
+        "solucion": "Cambio de kit de embrague centrífugo.",
+        "pasos_revision": [
+          "Retirar tapa de embrague.",
+          "Verificar estado de campana por rayaduras.",
+          "Medir longitud de resortes de zapatas."
+        ]
+      }
+    ]
+  }
+]

@@ -18,16 +18,8 @@ def get_supabase() -> Client:
 
 
 def search_similar_chunks(query_embedding: list[float], top_k: int = VECTOR_MATCH_COUNT) -> list[dict]:
-    """
-    Busca los chunks más similares al embedding dado en manuales_chunks.
-
-    Columnas retornadas: id, texto, fuente, pagina, datos, similarity
-
-    Intenta primero con la función RPC match_manuales_chunks.
-    Si no existe, hace un SELECT directo como fallback.
-    """
+    """Busca en manuales_chunks (manuales técnicos)."""
     client = get_supabase()
-
     try:
         response = client.rpc(
             "match_manuales_chunks",
@@ -37,13 +29,23 @@ def search_similar_chunks(query_embedding: list[float], top_k: int = VECTOR_MATC
             },
         ).execute()
         return response.data or []
-
     except Exception as e:
-        print(f"⚠️ RPC no disponible, usando SELECT directo: {e}")
-        response = (
-            client.table(VECTOR_TABLE)
-            .select("id, texto, fuente, pagina, datos")
-            .limit(top_k)
-            .execute()
-        )
+        print(f"⚠️ Error RPC manuales: {e}")
+        return []
+
+
+def search_similar_fallas(query_embedding: list[float], top_k: int = 3) -> list[dict]:
+    """Busca en fallas_diagnostico (base de datos de problemas y soluciones)."""
+    client = get_supabase()
+    try:
+        response = client.rpc(
+            "match_fallas_diagnostico",
+            {
+                "query_embedding": query_embedding,
+                "match_count": top_k,
+            },
+        ).execute()
         return response.data or []
+    except Exception as e:
+        print(f"⚠️ Error RPC fallas: {e}")
+        return []

@@ -112,3 +112,18 @@ docker-compose up -d
 # Qdrant: http://localhost:6333
 # Database: localhost:5433
 ```
+
+## Módulo de Diagnóstico de Fallas (RAG)
+
+El sistema cuenta con un módulo especializado para diagnosticar problemas comunes en modelos específicos de Auteco, proporcionando una solución y un procedimiento paso a paso.
+
+### Ingesta de Fallas
+Para cargar la base de datos de conocimientos de fallas:
+
+```bash
+# Desde la raíz del proyecto
+node ingestion/ingest_fallas.js
+```
+
+### Cómo usarlo
+El agente Pegasus detectará automáticamente si tu consulta es un reporte de falla y consultará la base de datos de diagnósticos antes de buscar en los manuales técnicos, priorizando el paso a paso de revisión.
