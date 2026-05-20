@@ -17,6 +17,7 @@ export interface MotorcycleEntry {
   plate: string;
   mileage: number;
   observations: string;
+  mechanicNotes?: string;
   timestamp: number;
   status: 'pending' | 'finished';
   parts: Part[];
@@ -26,6 +27,7 @@ interface WorkshopState {
   queue: MotorcycleEntry[];
   registerEntry: (entry: Omit<MotorcycleEntry, 'id' | 'timestamp' | 'parts' | 'status'>) => void;
   addPartToEntry: (entryId: string, part: Omit<Part, 'id'>) => void;
+  removePartFromEntry: (entryId: string, partId: string) => void;
   updateEntry: (entryId: string, updatedData: Partial<Omit<MotorcycleEntry, 'id' | 'timestamp' | 'parts' | 'status'>>) => void;
   removeEntry: (entryId: string) => void;
   finishRepair: (entryId: string) => void;
@@ -68,6 +70,17 @@ export const useWorkshopStore = create<WorkshopState>()(
                     ...entry.parts,
                     { ...partData, id: crypto.randomUUID() },
                   ],
+                }
+              : entry
+          ),
+        })),
+      removePartFromEntry: (entryId, partId) =>
+        set((state) => ({
+          queue: state.queue.map((entry) =>
+            entry.id === entryId
+              ? {
+                  ...entry,
+                  parts: entry.parts.filter((part) => part.id !== partId),
                 }
               : entry
           ),
