@@ -17,6 +17,7 @@ export default function MotorcycleCard({ entry }: MotorcycleCardProps) {
   
   const addPartToEntry = useWorkshopStore((state) => state.addPartToEntry);
   const removeEntry = useWorkshopStore((state) => state.removeEntry);
+  const removePartFromEntry = useWorkshopStore((state) => state.removePartFromEntry);
 
   useEffect(() => {
     const updateTimer = () => {
@@ -95,8 +96,7 @@ export default function MotorcycleCard({ entry }: MotorcycleCardProps) {
             <h4 className="text-sm uppercase tracking-wide">Gestión de Suministros</h4>
           </div>
 
-          {entry.status === 'pending' && (
-            <form onSubmit={handleAddPart} className="flex gap-2 mb-4">
+          <form onSubmit={handleAddPart} className="flex gap-2 mb-4">
               <input
                 type="text"
                 placeholder="Ej: Filtro de aceite"
@@ -119,7 +119,6 @@ export default function MotorcycleCard({ entry }: MotorcycleCardProps) {
                 <Plus className="w-4 h-4" />
               </button>
             </form>
-          )}
 
           {entry.parts.length > 0 ? (
             <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
@@ -128,6 +127,7 @@ export default function MotorcycleCard({ entry }: MotorcycleCardProps) {
                   <tr>
                     <th className="px-3 py-2">Repuesto</th>
                     <th className="px-3 py-2 text-center w-16">Cant.</th>
+                    <th className="px-3 py-2 w-10"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -139,6 +139,15 @@ export default function MotorcycleCard({ entry }: MotorcycleCardProps) {
                       </td>
                       <td className="px-3 py-2 text-center font-bold text-auteco-red">
                         {part.quantity}
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        <button
+                          onClick={() => removePartFromEntry(entry.id, part.id)}
+                          title="Eliminar repuesto"
+                          className="p-1 text-gray-400 hover:text-auteco-red hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </td>
                     </tr>
                   ))}
