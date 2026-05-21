@@ -43,3 +43,5 @@ lerna-debug.log*
 Thumbs.db
 
 activities.txt
+.claude
+documents/

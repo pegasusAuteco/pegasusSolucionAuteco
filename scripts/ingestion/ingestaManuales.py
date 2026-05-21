@@ -3,12 +3,14 @@ import base64
 import io
 import json
 import glob
+from pathlib import Path
 from dotenv import load_dotenv
 import httpx
 import fitz  # PyMuPDF
 from openai import OpenAI
 
-load_dotenv()
+load_dotenv(Path(__file__).resolve().parent.parent.parent / ".env")
+
 cliente = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 supabase_url = os.getenv("SUPABASE_URL")
@@ -20,7 +22,7 @@ if not supabase_url or not supabase_key:
 
 def imagen_a_base64(pagina: int, rutaPDF: str) -> str:
     doc = fitz.open(rutaPDF)
-    page = doc.load_page(pagina - 1)  # PyMuPDF usa índices desde 0
+    page = doc.load_page(pagina - 1)
     pix = page.get_pixmap(dpi=100)
     imagen_bytes = pix.tobytes("jpeg")
     return base64.b64encode(imagen_bytes).decode("utf-8")
@@ -57,7 +59,7 @@ def extraer_datos_ia(imagen_base64: str, prompt: str) -> dict:
                 intentos += 1
             else:
                 raise e
-    raise Exception("❌ Se superaron los intentos máximos por Rate Limit de OpenAI.")
+    raise Exception("Se superaron los intentos máximos por Rate Limit de OpenAI.")
 
 
 def generar_embedding(texto: str) -> list[float]:
@@ -74,7 +76,7 @@ def generar_embedding(texto: str) -> list[float]:
                 intentos += 1
             else:
                 raise e
-    raise Exception("❌ Se superaron los intentos máximos para Embeddings.")
+    raise Exception("Se superaron los intentos máximos para Embeddings.")
 
 
 def guardar_en_vectordb(chunk: dict, embedding: list[float]):
@@ -90,8 +92,6 @@ def guardar_en_vectordb(chunk: dict, embedding: list[float]):
             "datos": chunk["metadata"]["datos"],
             "embedding": embedding
         }
-        
-        # Realizamos la inserción usando la API REST de Supabase con httpx
         headers = {
             "apikey": supabase_key,
             "Authorization": f"Bearer {supabase_key}",
@@ -99,14 +99,12 @@ def guardar_en_vectordb(chunk: dict, embedding: list[float]):
             "Prefer": "return=minimal"
         }
         endpoint = f"{supabase_url}/rest/v1/manuales_chunks"
-        
         with httpx.Client() as client:
             res = client.post(endpoint, headers=headers, json=data)
             res.raise_for_status()
-            
-        print(f"✅ Página {chunk['metadata']['pagina']} guardada exitosamente en Supabase.")
+        print(f"Página {chunk['metadata']['pagina']} guardada en Supabase.")
     except Exception as e:
-        print(f"❌ Error al guardar la página {chunk['metadata']['pagina']} en Supabase: {e}")
+        print(f"Error al guardar página {chunk['metadata']['pagina']}: {e}")
 
 
 PROMPT = """
@@ -118,11 +116,11 @@ Analiza la imagen y responde SOLO con un JSON con estas claves:
 Si alguna clave no aplica, usa null.
 """
 
+
 def procesar_pdf_completo(rutaPDF: str):
     doc = fitz.open(rutaPDF)
     total = len(doc)
     print(f"Procesando {total} páginas: {rutaPDF}")
-
     for pagina in range(1, total + 1):
         b64 = imagen_a_base64(pagina, rutaPDF)
         datos = extraer_datos_ia(b64, PROMPT)
@@ -130,24 +128,23 @@ def procesar_pdf_completo(rutaPDF: str):
         chunk = {"texto": texto, "metadata": {"fuente": os.path.basename(rutaPDF), "pagina": pagina, "datos": datos}}
         embedding = generar_embedding(chunk["texto"])
         guardar_en_vectordb(chunk, embedding)
+    print("Listo.")
 
-    print("✅ Listo.")
 
 def procesar_carpeta(carpeta_path: str):
     pdfs = glob.glob(os.path.join(carpeta_path, "*.pdf"))
     if not pdfs:
-        print(f"❌ No se encontraron PDFs en la ruta: {carpeta_path}")
+        print(f"No se encontraron PDFs en: {carpeta_path}")
         return
-        
-    print(f"📂 Se encontraron {len(pdfs)} manuales en la carpeta. Comenzando la ingesta...\n")
+    print(f"Se encontraron {len(pdfs)} manuales. Comenzando ingesta...\n")
     for pdf in pdfs:
         print(f"\n--- Procesando: {os.path.basename(pdf)} ---")
         try:
             procesar_pdf_completo(pdf)
         except Exception as e:
-            print(f"⚠️ Error procesando el archivo {os.path.basename(pdf)}: {e}")
+            print(f"Error procesando {os.path.basename(pdf)}: {e}")
+
 
 if __name__ == "__main__":
-    # La carpeta 'motos' se encuentra 3 niveles arriba de la ruta actual (backend/rag/ingestion)
-    CARPETA_MOTOS = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../motos"))
+    CARPETA_MOTOS = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../motos"))
     procesar_carpeta(CARPETA_MOTOS)
