@@ -14,10 +14,10 @@ load_dotenv(Path(__file__).resolve().parent.parent.parent / ".env")
 cliente = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 supabase_url = os.getenv("SUPABASE_URL")
-supabase_key = os.getenv("SUPABASE_KEY")
+supabase_key = os.getenv("SUPABASE_SERVICE_KEY")
 
 if not supabase_url or not supabase_key:
-    print("⚠️ ADVERTENCIA: Faltan SUPABASE_URL o SUPABASE_KEY en tu archivo .env")
+    print("ADVERTENCIA: Faltan SUPABASE_URL o SUPABASE_SERVICE_KEY en tu archivo .env")
 
 
 def imagen_a_base64(pagina: int, rutaPDF: str) -> str:
@@ -54,7 +54,7 @@ def extraer_datos_ia(imagen_base64: str, prompt: str) -> dict:
         except Exception as e:
             if "429" in str(e) or "rate_limit" in str(e).lower():
                 espera = (intentos + 1) * 15
-                print(f"   ⏳ Rate Limit de OpenAI. Esperando {espera} seg...")
+                print(f"  Rate Limit de OpenAI. Esperando {espera} seg...")
                 time.sleep(espera)
                 intentos += 1
             else:

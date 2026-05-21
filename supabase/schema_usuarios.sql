@@ -1,6 +1,7 @@
 -- MotorConnect — Schema: Autenticación y usuarios
 -- Ejecutar en: Supabase SQL Editor o via scripts/apply_schema.py
 
+
 -- Enum de roles
 DO $$ BEGIN
     CREATE TYPE userrole AS ENUM ('employee', 'admin');
