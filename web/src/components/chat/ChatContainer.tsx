@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback, type ChangeEvent } from 'react';
 import ChatBubble from './ChatBubble';
 import { Send, Loader2, Mic, MicOff, ImagePlus, X } from 'lucide-react';
-import { useChatStore } from '@store/chatStore';
+import { useChatUI } from '@hooks/useChatUI';
 import { useAuthStore } from '@store/authStore';
 import { useMessages, useSendMessage } from '@hooks/useChat';
+import { useQueryClient } from '@tanstack/react-query';
 import type { Message } from '@types';
 
 const STREAM_INTERVAL_MS = 16;
@@ -31,17 +32,17 @@ const ChatContainer = () => {
   const user = useAuthStore((s) => s.user);
   const userName = user?.name || user?.email || 'Mecánico';
 
-  const {
-    activeConversationId,
-    messages,
-    isLoading,
-    pendingChatInput,
-    setPendingChatInput,
-    addMessage,
-  } = useChatStore();
-
-  useMessages(activeConversationId);
+  const { activeConversationId, pendingChatInput, setPendingChatInput } = useChatUI();
+  const { data: messages = [], isLoading: isLoadingMessages } = useMessages(activeConversationId);
   const sendMessage = useSendMessage();
+  const isLoading = isLoadingMessages || sendMessage.isPending;
+  const queryClient = useQueryClient();
+
+  const addMessage = useCallback((message: Message) => {
+    queryClient.setQueryData<Message[]>(['messages', activeConversationId], (old) => {
+      return old ? [...old, message] : [message];
+    });
+  }, [queryClient, activeConversationId]);
 
   // Reset streaming when switching conversations
   useEffect(() => {

@@ -1,109 +1,107 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { chatService } from '@services/api'
-import { useChatStore } from '@store/chatStore'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { chatService } from '@services/api';
+import { useChatUI } from './useChatUI';
+import type { Message } from '@types';
 
 export function useConversations() {
-  const setConversations = useChatStore((s) => s.setConversations)
-
   return useQuery({
     queryKey: ['conversations'],
-    queryFn: () => chatService.list().then((data) => {
-      setConversations(data)
-      return data
-    }),
-  })
+    queryFn: () => chatService.list(),
+  });
 }
 
 export function useMessages(conversationId: string | null) {
-  const setMessages = useChatStore((s) => s.setMessages)
-
   return useQuery({
     queryKey: ['messages', conversationId],
-    queryFn: () => chatService.getMessages(conversationId!).then((data) => {
-      setMessages(data)
-      return data
-    }),
+    queryFn: () => chatService.getMessages(conversationId!),
     enabled: !!conversationId,
-  })
+  });
 }
 
 export function useCreateConversation() {
-  const queryClient = useQueryClient()
-  const addConversation = useChatStore((s) => s.addConversation)
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (title?: string) => chatService.create(title),
-    onSuccess: (data) => {
-      addConversation(data)
-      queryClient.invalidateQueries({ queryKey: ['conversations'] })
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
     },
-  })
+  });
 }
 
 export function useRenameConversation() {
-  const queryClient = useQueryClient()
-  const renameConversation = useChatStore((s) => s.renameConversation)
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({ conversationId, title }: { conversationId: string; title: string }) =>
       chatService.rename(conversationId, title),
-    onSuccess: (_, { conversationId, title }) => {
-      renameConversation(conversationId, title)
-      queryClient.invalidateQueries({ queryKey: ['conversations'] })
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
     },
-  })
+  });
 }
 
 export function useDeleteConversation() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
+  const { activeConversationId, setActiveConversation } = useChatUI();
 
   return useMutation({
     mutationFn: (conversationId: string) => chatService.remove(conversationId),
     onSuccess: (_, conversationId) => {
-      const { activeConversationId, setActiveConversation } = useChatStore.getState()
-      if (activeConversationId === conversationId) setActiveConversation(null)
-      queryClient.invalidateQueries({ queryKey: ['conversations'] })
+      if (activeConversationId === conversationId) {
+        setActiveConversation(null);
+      }
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
     },
-  })
+  });
 }
 
 export function useDeleteAllConversations() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
+  const { setActiveConversation } = useChatUI();
 
   return useMutation({
     mutationFn: () => chatService.removeAll(),
     onSuccess: (data) => {
-      console.log(`🗑️ ${data.deleted} conversaciones eliminadas`)
-      const { setActiveConversation, setConversations, setMessages } = useChatStore.getState()
-      setConversations([])
-      setMessages([])
-      setActiveConversation(null)
-      queryClient.invalidateQueries({ queryKey: ['conversations'] })
+      console.log(`🗑️ ${data.deleted} conversaciones eliminadas`);
+      setActiveConversation(null);
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
     },
-  })
+  });
 }
 
 export function useSendMessage() {
-  const addMessage = useChatStore((s) => s.addMessage)
-  const setIsLoading = useChatStore((s) => s.setIsLoading)
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({ conversationId, content }: { conversationId: string; content: string }) =>
       chatService.sendMessage(conversationId, content),
-    onMutate: (variables) => {
-      setIsLoading(true);
-      // Agregar el mensaje del usuario inmediatamente (optimistic update)
-      addMessage({
+    onMutate: async (variables) => {
+      await queryClient.cancelQueries({ queryKey: ['messages', variables.conversationId] });
+
+      const previousMessages = queryClient.getQueryData<Message[]>(['messages', variables.conversationId]);
+
+      const optimisticMessage: Message = {
         id: Date.now().toString(),
         conversation_id: variables.conversationId,
         role: 'user',
         content: variables.content,
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+      };
+
+      queryClient.setQueryData<Message[]>(['messages', variables.conversationId], (old) => {
+        return old ? [...old, optimisticMessage] : [optimisticMessage];
       });
+
+      return { previousMessages };
     },
-    onSuccess: () => {
-      setIsLoading(false)
+    onError: (_err, variables, context) => {
+      if (context?.previousMessages) {
+        queryClient.setQueryData(['messages', variables.conversationId], context.previousMessages);
+      }
     },
-    onError: () => setIsLoading(false),
-  })
+    onSettled: (_data, _err, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['messages', variables.conversationId] });
+    },
+  });
 }

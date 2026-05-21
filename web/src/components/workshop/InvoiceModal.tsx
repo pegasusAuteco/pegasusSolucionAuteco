@@ -1,5 +1,4 @@
-import React from 'react';
-import { MotorcycleEntry } from '../../store/workshopStore';
+import { MotorcycleEntry } from '../../contexts/WorkshopContext';
 import { FileText, X, Printer, CheckCircle } from 'lucide-react';
 
 interface InvoiceModalProps {

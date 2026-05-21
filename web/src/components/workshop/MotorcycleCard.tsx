@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { MotorcycleEntry, useWorkshopStore } from '../../store/workshopStore';
-import { Clock, Wrench, Plus, CheckCircle2, Package, Edit, Trash2 } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { useWorkshop, MotorcycleEntry } from '@hooks/useWorkshop';
+import { Clock, Wrench, Plus, CheckCircle2, Package, Edit, Trash2, FileText } from 'lucide-react';
+import { formatRelativeTime } from '../../utils/dates';
 import ReceptionForm from './ReceptionForm';
 
 interface MotorcycleCardProps {
@@ -15,14 +14,12 @@ export default function MotorcycleCard({ entry }: MotorcycleCardProps) {
   const [timeElapsed, setTimeElapsed] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   
-  const addPartToEntry = useWorkshopStore((state) => state.addPartToEntry);
-  const removeEntry = useWorkshopStore((state) => state.removeEntry);
-  const removePartFromEntry = useWorkshopStore((state) => state.removePartFromEntry);
+  const { addPartToEntry, removeEntry, removePartFromEntry, finishRepair } = useWorkshop();
 
   useEffect(() => {
     const updateTimer = () => {
       setTimeElapsed(
-        formatDistanceToNow(entry.timestamp, { addSuffix: false, locale: es })
+        formatRelativeTime(entry.timestamp)
       );
     };
     updateTimer();
@@ -85,6 +82,18 @@ export default function MotorcycleCard({ entry }: MotorcycleCardProps) {
             "{entry.observations}"
           </p>
         </div>
+
+        {entry.mechanicNotes && (
+          <div className="text-sm text-gray-700 dark:text-gray-300">
+            <p className="font-semibold text-gray-900 dark:text-white mb-1 flex items-center gap-1.5">
+              <FileText className="w-4 h-4 text-auteco-red" />
+              Observaciones del Mecánico:
+            </p>
+            <p className="bg-red-50 dark:bg-red-900/10 p-2.5 rounded-lg border border-red-100 dark:border-red-900/20 italic">
+              "{entry.mechanicNotes}"
+            </p>
+          </div>
+        )}
 
         {/* Separator */}
         <div className="border-t border-gray-100 dark:border-gray-800 my-1"></div>
@@ -175,7 +184,7 @@ export default function MotorcycleCard({ entry }: MotorcycleCardProps) {
               Editar
             </button>
             <button
-              onClick={() => useWorkshopStore.getState().finishRepair(entry.id)}
+              onClick={() => finishRepair(entry.id)}
               title="Finalizar"
               className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50 rounded-lg transition-colors"
             >

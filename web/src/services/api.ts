@@ -1,66 +1,54 @@
-import axios from 'axios'
+import { apiFetch } from '../lib/fetch'
 import type { AuthResponse, LoginCredentials, RegisterData, RegisterResponseData, Conversation, Message, UserStats, AdminStats } from '@types'
 
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
-  headers: { 'Content-Type': 'application/json' },
-})
-
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token')
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
-})
-
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    const requestUrl: string = error.config?.url || ''
-    const isLoginRequest = requestUrl.includes('/auth/login')
-
-    if (error.response?.status === 401 && !isLoginRequest) {
-      localStorage.removeItem('token')
-      window.location.href = '/login'
-    }
-    return Promise.reject(error)
-  },
-)
+const baseURL = import.meta.env.VITE_API_URL || '/api'
 
 export const authService = {
   login: (credentials: LoginCredentials) =>
-    api.post<AuthResponse>('/auth/login', credentials).then((r) => r.data),
+    apiFetch<AuthResponse>(`${baseURL}/auth/login`, {
+      method: 'POST',
+      body: JSON.stringify(credentials),
+    }),
   register: (data: RegisterData) =>
-    api.post<RegisterResponseData>('/auth/register', data).then((r) => r.data),
-  profile: () => api.get<{ user: import('@types').User }>('/auth/profile').then((r) => r.data.user),
+    apiFetch<RegisterResponseData>(`${baseURL}/auth/register`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  profile: () => apiFetch<{ user: import('@types').User }>(`${baseURL}/auth/profile`).then((r) => r.user),
 }
 
 export const chatService = {
-  list: () => api.get<Conversation[]>('/chat/conversations').then((r) => r.data),
+  list: () => apiFetch<Conversation[]>(`${baseURL}/chat/conversations`),
   create: (title?: string) =>
-    api.post<Conversation>('/chat/conversations', { title }).then((r) => r.data),
+    apiFetch<Conversation>(`${baseURL}/chat/conversations`, {
+      method: 'POST',
+      body: JSON.stringify({ title }),
+    }),
   rename: (conversationId: string, title: string) =>
-    api.patch<Conversation>(`/chat/conversations/${conversationId}`, { title }).then((r) => r.data),
+    apiFetch<Conversation>(`${baseURL}/chat/conversations/${conversationId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ title }),
+    }),
   remove: (conversationId: string) =>
-    api.delete(`/chat/conversations/${conversationId}`),
+    apiFetch<void>(`${baseURL}/chat/conversations/${conversationId}`, { method: 'DELETE' }),
   removeAll: () =>
-    api.delete<{ deleted: number }>('/chat/conversations').then((r) => r.data),
+    apiFetch<{ deleted: number }>(`${baseURL}/chat/conversations`, { method: 'DELETE' }),
   getMessages: (conversationId: string) =>
-    api.get<Message[]>(`/chat/conversations/${conversationId}/messages`).then((r) => r.data),
+    apiFetch<Message[]>(`${baseURL}/chat/conversations/${conversationId}/messages`),
   sendMessage: (conversationId: string, content: string) =>
-    api.post<Message>(`/chat/conversations/${conversationId}/messages`, { content }).then((r) => r.data),
+    apiFetch<Message>(`${baseURL}/chat/conversations/${conversationId}/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ content }),
+    }),
 }
 
 export const historyService = {
-  list: () => api.get<Conversation[]>('/history').then((r) => r.data),
-  get: (id: string) => api.get<Conversation>(`/history/${id}`).then((r) => r.data),
-  delete: (id: string) => api.delete(`/history/${id}`),
+  list: () => apiFetch<Conversation[]>(`${baseURL}/history`),
+  get: (id: string) => apiFetch<Conversation>(`${baseURL}/history/${id}`),
+  delete: (id: string) => apiFetch<void>(`${baseURL}/history/${id}`, { method: 'DELETE' }),
 }
 
 export const analyticsService = {
-  myStats: () => api.get<UserStats>('/analytics/me').then((r) => r.data),
-  adminStats: () => api.get<AdminStats>('/analytics/admin').then((r) => r.data),
+  myStats: () => apiFetch<UserStats>(`${baseURL}/analytics/me`),
+  adminStats: () => apiFetch<AdminStats>(`${baseURL}/analytics/admin`),
 }
-
-export default api

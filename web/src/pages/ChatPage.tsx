@@ -1,18 +1,19 @@
 import { useEffect, useRef } from 'react'
 import { MessageSquare, Plus } from 'lucide-react'
 import { useConversations, useMessages, useCreateConversation, useSendMessage } from '@hooks/useChat'
-import { useChatStore } from '@store/chatStore'
+import { useChatUI } from '@hooks/useChatUI'
 import ChatBubble from '@components/chat/ChatBubble'
 import ChatInput from '@components/chat/ChatInput'
 import EmptyState from '@components/shared/EmptyState'
 import CompactMechanicQueue from '@components/workshop/CompactMechanicQueue'
 
 export default function ChatPage() {
-  const { activeConversationId, messages, isLoading, setActiveConversation } = useChatStore()
+  const { activeConversationId, setActiveConversation } = useChatUI()
   const { data: conversations } = useConversations()
-  const { refetch: refetchMessages } = useMessages(activeConversationId)
+  const { data: messages = [], isLoading: isLoadingMessages } = useMessages(activeConversationId)
   const createConversation = useCreateConversation()
   const sendMessage = useSendMessage()
+  const isLoading = isLoadingMessages || sendMessage.isPending
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
