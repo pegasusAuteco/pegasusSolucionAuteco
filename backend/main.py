@@ -18,6 +18,7 @@ from chat.router import router as chat_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from auth.models import User
+    from workshop.models import Motorcycle, Part  # noqa: F401 — registers tables with Base.metadata
     from logs.connections import get_redis, get_mongo_db
     from logs.log_service import ConversationLogService
 

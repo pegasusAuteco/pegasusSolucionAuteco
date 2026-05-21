@@ -1,11 +1,9 @@
--- MotorConnect — Schema: Autenticación y usuarios
--- Ejecutar en: Supabase SQL Editor o via scripts/apply_schema.py
-
-
--- Enum de roles
-(((((CREADA Y LISTA PARA INGRESO DE DATA)))))
-(((((CREADA Y LISTA PARA INGRESO DE DATA)))))
-(((((CREADA Y LISTA PARA INGRESO DE DATA)))))
+-- MotorConnect — Schema: Authentication and users
+-- Run in: Supabase SQL Editor or via scripts/db/apply_schema.py
+-- ----------------------------------------------------------------
+-- Enum: user roles
+-- ----------------------------------------------------------------
+-- (TABLE CREATED AND READY FOR DATA ENTRY)
 
 DO $$ BEGIN
     CREATE TYPE userrole AS ENUM ('employee', 'admin');
@@ -13,7 +11,11 @@ EXCEPTION
     WHEN duplicate_object THEN NULL;
 END $$;
 
--- Tabla de usuarios
+-- ----------------------------------------------------------------
+-- Table: usuarios
+-- ----------------------------------------------------------------
+-- (TABLE CREATED AND READY FOR DATA ENTRY)
+
 CREATE TABLE IF NOT EXISTS usuarios (
     id            SERIAL PRIMARY KEY,
     nombre        VARCHAR(150)  NOT NULL,
@@ -26,10 +28,10 @@ CREATE TABLE IF NOT EXISTS usuarios (
     updated_at    TIMESTAMPTZ   NOT NULL DEFAULT NOW()
 );
 
--- Índice en email (búsquedas de login)
+-- Index on email for fast login lookups
 CREATE INDEX IF NOT EXISTS ix_usuarios_email ON usuarios (email);
 
--- Función y trigger para actualizar updated_at automáticamente
+-- Function and trigger to auto-update updated_at on every row change
 CREATE OR REPLACE FUNCTION set_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -44,22 +46,19 @@ CREATE TRIGGER trg_usuarios_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION set_updated_at();
 
--- RLS: deshabilitado (el backend usa service_role que lo bypasea)
+-- RLS disabled — backend uses service_role key which bypasses it
 ALTER TABLE usuarios DISABLE ROW LEVEL SECURITY;
 
 
-
-----------------------------------------------------------------
--- MotorConnect — Schema: Recepción / Ingreso de Motos
-----------------------------------------------------------------
-(((((CREADA Y LISTA PARA INGRESO DE DATA)))))
-(((((CREADA Y LISTA PARA INGRESO DE DATA)))))
-(((((CREADA Y LISTA PARA INGRESO DE DATA)))))
+-- ----------------------------------------------------------------
+-- Schema: Workshop intake (ingresos_taller)
+-- ----------------------------------------------------------------
+-- (TABLE CREATED AND READY FOR DATA ENTRY)
 
 CREATE TABLE IF NOT EXISTS ingresos_taller (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     cliente VARCHAR(255) NOT NULL,
-    documento_identidad VARCHAR(50) NOT NULL, -- CC o NIT
+    documento_identidad VARCHAR(50) NOT NULL, -- national ID or tax ID
     correo_electronico VARCHAR(255),
     fecha_ingreso TIMESTAMPTZ NOT NULL DEFAULT now(),
     marca_modelo VARCHAR(255) NOT NULL,
@@ -70,63 +69,59 @@ CREATE TABLE IF NOT EXISTS ingresos_taller (
     updated_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Trigger para actualizar automaticamente el updated_at
+-- Reuse set_updated_at() to keep updated_at current
 CREATE TRIGGER set_ingresos_taller_updated_at
     BEFORE UPDATE ON ingresos_taller
     FOR EACH ROW
     EXECUTE FUNCTION set_updated_at();
 
--- RLS: deshabilitado (el backend usa service_role)
+-- RLS disabled — backend uses service_role key
 ALTER TABLE ingresos_taller DISABLE ROW LEVEL SECURITY;
 
---------------------------------------------------------------
-(((((A TENER EN CUENTA PARA MOSTRAR INFORMACION POR ROLES)))))
-(((((A TENER EN CUENTA PARA MOSTRAR INFORMACION POR ROLES)))))
-(((((A TENER EN CUENTA PARA MOSTRAR INFORMACION POR ROLES)))))
+
+-- ----------------------------------------------------------------
+-- NOTE: Role-based data filtering
+-- ----------------------------------------------------------------
+-- (KEEP IN MIND FOR ROLE-BASED FRONTEND DISPLAY)
 
 /*
 =============================================================================
-GUÍA DE IMPLEMENTACIÓN: VISTA PARA MECÁNICOS (FRONTEND & BACKEND)
+IMPLEMENTATION GUIDE: MECHANIC VIEW (FRONTEND & BACKEND)
 =============================================================================
-Problema: Los mecánicos no deben ver información personal del cliente 
-(nombre, cédula, correo), solo deben acceder a los datos de la moto.
+Problem: mechanics must not see client personal data (name, ID, email);
+they should only access vehicle data.
 
-Arquitectura: NO crear una tabla separada para evitar duplicidad de datos. 
-Se debe mantener una única "fuente de la verdad" (la tabla ingresos_taller).
+Architecture: do NOT create a separate table to avoid data duplication.
+Keep a single source of truth (ingresos_taller).
 
-Para resolver esto de forma segura, el equipo de desarrollo debe elegir 
-una de estas dos opciones de implementación:
+Choose one of the two implementation options below:
 
-OPCIÓN 1: Filtrado en el Backend (FastAPI) - [RECOMENDADA]
+OPTION 1: Backend filtering (FastAPI) — RECOMMENDED
 -----------------------------------------------------------------------------
-1. En Backend (`schemas.py`): Crear un modelo Pydantic estricto:
+1. In backend (schemas.py): define a strict Pydantic model:
    class MotoMecanicoResponse(BaseModel):
        id: str
        marca_modelo: str
        placa: str
        observaciones: str
 
-2. En Backend (`router.py`): Crear un endpoint GET específico:
+2. In backend (router.py): expose a dedicated GET endpoint:
    @router.get("/api/mecanicos/motos", response_model=list[MotoMecanicoResponse])
-   (Al usar response_model, FastAPI automáticamente omite los datos sensibles
-   al enviarlos al frontend, es completamente seguro).
+   FastAPI will automatically strip sensitive fields before sending the response.
 
-3. En Frontend (React/Web): El encargado de frontend solo debe hacer un 
-   `fetch` a la ruta `/api/mecanicos/motos` y renderizar la tabla con la respuesta. 
-   No requiere lógica extra de ocultamiento de datos porque el servidor nunca
-   los envió.
+3. In frontend (React/Web): fetch "/api/mecanicos/motos" and render the table.
+   No extra hiding logic needed — the server never sent the sensitive data.
 
-OPCIÓN 2: Uso de Vista SQL (View)
+OPTION 2: SQL View
 -----------------------------------------------------------------------------
-Utilizar la vista 'vista_mecanicos_ingresos' (creada justo aquí abajo).
-El backend en lugar de hacer un SELECT a la tabla principal, hace la consulta
-a la vista. La base de datos entregará únicamente las 4 columnas permitidas.
+Query the view "vista_mecanicos_ingresos" instead of the main table.
+The database returns only the 4 allowed columns.
 =============================================================================
 */
 
--- Vista SQL para la Opción 2 (Opcional pero recomendada tenerla lista):
+-- SQL view for Option 2 (optional but useful to have ready):
 CREATE OR REPLACE VIEW vista_mecanicos_ingresos AS
-SELECT 
+SELECT
     id,
     marca_modelo,
     placa,
@@ -134,35 +129,38 @@ SELECT
 FROM ingresos_taller;
 
 
+-- ----------------------------------------------------------------
+-- NOTE: Motorcycle-to-mechanic assignment
+-- ----------------------------------------------------------------
 /*
 =============================================================================
-NOTAS DE ARQUITECTURA: ASIGNACIÓN DE MOTOS A MECÁNICOS
+ARCHITECTURE NOTES: ASSIGNING MOTORCYCLES TO MECHANICS
 =============================================================================
-Flujo de trabajo: 
-1. La recepcionista registra la moto (entra a la fila general sin asignar).
-2. El mecánico entra al panel, ve las motos disponibles y hace clic en "Tomar".
+Workflow:
+1. Receptionist registers the motorcycle (enters the general queue, unassigned).
+2. Mechanic opens the panel, sees available motorcycles and clicks "Take".
 
-¿Cómo estructurar esto en la Base de Datos? Existen 2 caminos:
+Two structural options:
 
-CAMINO 1: El enfoque rápido (MVP / Más fácil de programar)
+OPTION 1: Quick approach (MVP — easiest to implement)
 -----------------------------------------------------------------------------
-Ideal si una moto solo la arregla un mecánico de principio a fin.
-Se deben agregar estas dos columnas a la tabla `ingresos_taller`:
+Best when a single mechanic handles a repair from start to finish.
+Add two columns to ingresos_taller:
     mecanico_id INTEGER REFERENCES usuarios(id) ON DELETE SET NULL
     estado VARCHAR(50) DEFAULT 'en_cola'
-* Cuando el mecánico presiona el botón, el backend hace un UPDATE y asigna su ID.
-* Si mecanico_id es NULL -> Se muestra en la fila general.
+When the mechanic clicks the button, the backend runs an UPDATE to assign their ID.
+If mecanico_id IS NULL → motorcycle appears in the general queue.
 
-CAMINO 2: El enfoque profesional (Recomendado para Trazabilidad/Historial)
+OPTION 2: Professional approach — recommended for traceability
 -----------------------------------------------------------------------------
-Ideal si quieres guardar historial (ej. Carlos trabajó 2h, luego Juan trabajó 1h).
-Se debe crear una NUEVA TABLA llamada `asignaciones_taller`:
+Best when you need a history log (e.g. Carlos worked 2h, then Juan worked 1h).
+Create a new table asignaciones_taller:
     CREATE TABLE asignaciones_taller (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         ingreso_id UUID REFERENCES ingresos_taller(id),
         mecanico_id INTEGER REFERENCES usuarios(id),
         fecha_inicio TIMESTAMPTZ DEFAULT now()
     );
-* Cuando el mecánico presiona el botón, el backend hace un INSERT aquí.
+When the mechanic clicks the button, the backend inserts a row here.
 =============================================================================
 */
