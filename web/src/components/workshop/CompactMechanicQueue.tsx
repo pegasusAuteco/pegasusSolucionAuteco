@@ -18,7 +18,7 @@ export default function CompactMechanicQueue({ isGrid = false }: CompactMechanic
   } = useWorkshop();
 
   const pendingQueue = queue.filter(q => q.status === 'pending');
-  const sortedQueue = [...pendingQueue].sort((a, b) => a.timestamp - b.timestamp);
+  const sortedQueue = [...pendingQueue].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   const activeRepair = activeRepairId ? queue.find((q) => q.id === activeRepairId && q.status === 'pending') : null;
 
   if (activeRepair) {

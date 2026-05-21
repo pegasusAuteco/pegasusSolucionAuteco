@@ -18,14 +18,12 @@ export default function MotorcycleCard({ entry }: MotorcycleCardProps) {
 
   useEffect(() => {
     const updateTimer = () => {
-      setTimeElapsed(
-        formatRelativeTime(entry.timestamp)
-      );
+      setTimeElapsed(formatRelativeTime(new Date(entry.createdAt)));
     };
     updateTimer();
-    const interval = setInterval(updateTimer, 60000); // update every minute
+    const interval = setInterval(updateTimer, 60000);
     return () => clearInterval(interval);
-  }, [entry.timestamp]);
+  }, [entry.createdAt]);
 
   const handleAddPart = (e: React.FormEvent) => {
     e.preventDefault();

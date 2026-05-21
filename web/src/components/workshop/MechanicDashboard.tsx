@@ -7,8 +7,8 @@ export default function MechanicDashboard() {
   const { queue } = useWorkshop();
   const [activeTab, setActiveTab] = useState<'pending' | 'finished'>('pending');
 
-  const pendingQueue = queue.filter(q => q.status === 'pending').sort((a, b) => a.timestamp - b.timestamp);
-  const finishedQueue = queue.filter(q => q.status === 'finished').sort((a, b) => b.timestamp - a.timestamp); // Newest finished first
+  const pendingQueue = queue.filter(q => q.status === 'pending').sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  const finishedQueue = queue.filter(q => q.status === 'finished').sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   const displayedQueue = activeTab === 'pending' ? pendingQueue : finishedQueue;
 

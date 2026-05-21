@@ -17,7 +17,7 @@ export interface MotorcycleEntry {
   mileage: number;
   observations: string;
   mechanicNotes?: string;
-  timestamp: number;
+  createdAt: string;
   status: 'pending' | 'finished';
   parts: Part[];
 }
@@ -26,10 +26,10 @@ export interface WorkshopContextType {
   queue: MotorcycleEntry[];
   activeRepairId: string | null;
   setActiveRepairId: (id: string | null) => void;
-  registerEntry: (entry: Omit<MotorcycleEntry, 'id' | 'timestamp' | 'parts' | 'status'>) => void;
+  registerEntry: (entry: Omit<MotorcycleEntry, 'id' | 'createdAt' | 'parts' | 'status'>) => void;
   addPartToEntry: (entryId: string, part: Omit<Part, 'id'>) => void;
   removePartFromEntry: (entryId: string, partId: string) => void;
-  updateEntry: (entryId: string, updatedData: Partial<Omit<MotorcycleEntry, 'id' | 'timestamp' | 'parts' | 'status'>>) => void;
+  updateEntry: (entryId: string, updatedData: Partial<Omit<MotorcycleEntry, 'id' | 'createdAt' | 'parts' | 'status'>>) => void;
   removeEntry: (entryId: string) => void;
   finishRepair: (entryId: string) => void;
 }
@@ -67,14 +67,14 @@ export function WorkshopProvider({ children }: { children: ReactNode }) {
     }
   }, [queue, activeRepairId]);
 
-  const registerEntry = useCallback((entryData: Omit<MotorcycleEntry, 'id' | 'timestamp' | 'parts' | 'status'>) => {
+  const registerEntry = useCallback((entryData: Omit<MotorcycleEntry, 'id' | 'createdAt' | 'parts' | 'status'>) => {
     setQueue((prev) => [
       ...prev,
-      { ...entryData, id: crypto.randomUUID(), timestamp: Date.now(), status: 'pending', parts: [] },
+      { ...entryData, id: crypto.randomUUID(), createdAt: new Date().toISOString(), status: 'pending', parts: [] },
     ]);
   }, []);
 
-  const updateEntry = useCallback((entryId: string, updatedData: Partial<Omit<MotorcycleEntry, 'id' | 'timestamp' | 'parts' | 'status'>>) => {
+  const updateEntry = useCallback((entryId: string, updatedData: Partial<Omit<MotorcycleEntry, 'id' | 'createdAt' | 'parts' | 'status'>>) => {
     setQueue((prev) => prev.map((e) => (e.id === entryId ? { ...e, ...updatedData } : e)));
   }, []);
 
