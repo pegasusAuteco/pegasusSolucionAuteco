@@ -1,18 +1,21 @@
 import React, { useState } from 'react';
-import { useWorkshopStore } from '../../store/workshopStore';
-import { Package, Plus, ArrowLeft, Wrench, CheckCircle, FileText } from 'lucide-react';
+import { useWorkshop } from '@hooks/useWorkshop';
+import { Package, Plus, ArrowLeft, Wrench, CheckCircle, FileText, Trash2 } from 'lucide-react';
 
 interface CompactMechanicQueueProps {
   isGrid?: boolean;
 }
 
 export default function CompactMechanicQueue({ isGrid = false }: CompactMechanicQueueProps) {
-  const queue = useWorkshopStore((state) => state.queue);
-  const activeRepairId = useWorkshopStore((state) => state.activeRepairId);
-  const setActiveRepairId = useWorkshopStore((state) => state.setActiveRepairId);
-  const addPartToEntry = useWorkshopStore((state) => state.addPartToEntry);
-  const finishRepair = useWorkshopStore((state) => state.finishRepair);
-  const updateEntry = useWorkshopStore((state) => state.updateEntry);
+  const {
+    queue,
+    activeRepairId,
+    setActiveRepairId,
+    addPartToEntry,
+    finishRepair,
+    updateEntry,
+    removePartFromEntry,
+  } = useWorkshop();
 
   const pendingQueue = queue.filter(q => q.status === 'pending');
   const sortedQueue = [...pendingQueue].sort((a, b) => a.timestamp - b.timestamp);
@@ -43,6 +46,7 @@ export default function CompactMechanicQueue({ isGrid = false }: CompactMechanic
                   entry={activeRepair} 
                   onAddPart={(part) => addPartToEntry(activeRepair.id, part)} 
                   onUpdateNotes={(notes) => updateEntry(activeRepair.id, { mechanicNotes: notes })}
+                  onRemovePart={(partId) => removePartFromEntry(activeRepair.id, partId)}
                   isActiveView={true}
                 />
               </div>
@@ -82,6 +86,7 @@ export default function CompactMechanicQueue({ isGrid = false }: CompactMechanic
             key={entry.id} 
             entry={entry} 
             onAddPart={(part) => addPartToEntry(entry.id, part)} 
+            onRemovePart={(partId) => removePartFromEntry(entry.id, partId)}
             onSelect={() => setActiveRepairId(entry.id)}
             isActiveView={false}
           />
@@ -96,12 +101,14 @@ function CompactMotorcycleCard({
   onAddPart, 
   onSelect,
   onUpdateNotes,
+  onRemovePart,
   isActiveView
 }: { 
   entry: any, 
   onAddPart: (part: any) => void,
   onSelect?: () => void,
   onUpdateNotes?: (notes: string) => void,
+  onRemovePart?: (partId: string) => void,
   isActiveView: boolean
 }) {
   const [partName, setPartName] = useState('');
@@ -207,7 +214,17 @@ function CompactMotorcycleCard({
                   {!isActiveView && <Package className="w-3.5 h-3.5 shrink-0" />}
                   <span className="truncate font-medium">{part.name}</span>
                 </span>
-                <span className="font-bold bg-gray-100 dark:bg-gray-800 text-auteco-red px-2 py-0.5 rounded ml-2 shrink-0">x{part.quantity}</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="font-bold bg-gray-100 dark:bg-gray-800 text-auteco-red px-2 py-0.5 rounded">x{part.quantity}</span>
+                  {isActiveView && onRemovePart && (
+                    <button
+                      onClick={() => onRemovePart(part.id)}
+                      className="text-gray-400 hover:text-auteco-red hover:bg-red-50 dark:hover:bg-red-900/30 p-1 rounded transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>

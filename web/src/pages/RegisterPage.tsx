@@ -1,8 +1,6 @@
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { motion } from 'framer-motion'
+
 import { User, Mail, Lock, Building2, AlertCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useRegister } from '@hooks/useAuth'
@@ -32,34 +30,71 @@ const registerSchema = z
 
 type RegisterForm = z.infer<typeof registerSchema>
 
+type FormFields = {
+  nombre: string
+  email: string
+  password: string
+  confirmPassword: string
+  acceptTerms: boolean
+  empresa_taller: string
+}
+
 export default function RegisterPage() {
   const navigate = useNavigate()
   const registerMutation = useRegister()
   const addToast = useToastStore((s) => s.addToast)
-  const [retryPayload, setRetryPayload] = useState<RegisterForm | null>(null)
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-    setError,
-  } = useForm<RegisterForm>({
-    resolver: zodResolver(registerSchema),
-    defaultValues: {
-      acceptTerms: false as unknown as true,
-      empresa_taller: '',
-    },
+  const [formData, setFormData] = useState<FormFields>({
+    nombre: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    acceptTerms: false,
+    empresa_taller: '',
   })
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [retryPayload, setRetryPayload] = useState<FormFields | null>(null)
 
-  const onSubmit = async (data: RegisterForm) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value
+    setFormData({ ...formData, [e.target.name]: value })
+    if (errors[e.target.name]) {
+      setErrors({ ...errors, [e.target.name]: '' })
+    }
+  }
+
+  const onSubmit = async (e?: React.FormEvent, dataToSubmit?: FormFields) => {
+    if (e) e.preventDefault()
+
+    const data = dataToSubmit || formData
+
+    // Zod cross-field validation (includes refine for confirmPassword)
+    const result = registerSchema.safeParse({
+      ...data,
+      acceptTerms: data.acceptTerms === true ? true : (data.acceptTerms as unknown),
+    })
+    if (!result.success) {
+      const formattedErrors: Record<string, string> = {}
+      result.error.issues.forEach((issue) => {
+        const key = String(issue.path[0])
+        if (!formattedErrors[key]) {
+          formattedErrors[key] = issue.message
+        }
+      })
+      setErrors(formattedErrors)
+      return
+    }
+
     if (!navigator.onLine) {
       const message = 'Sin conexión. Verifica tu internet y vuelve a intentarlo.'
       setRetryPayload(data)
-      setError('root', { message })
+      setErrors({ root: message })
       addToast('error', message)
       return
     }
 
+    setIsSubmitting(true)
     try {
       await registerMutation.mutateAsync({
         nombre: data.nombre,
@@ -74,7 +109,7 @@ export default function RegisterPage() {
       const detail = err?.response?.data?.detail
 
       if (status === 409) {
-        setError('email', { message: detail })
+        setErrors({ email: detail })
       } else if ((status === 400 || status === 422) && Array.isArray(detail)) {
         const fieldMap: Record<string, keyof RegisterForm> = {
           nombre: 'nombre',
@@ -82,31 +117,33 @@ export default function RegisterPage() {
           password: 'password',
           accept_terms: 'acceptTerms',
         }
+        const newErrors: Record<string, string> = {}
         for (const e of detail) {
           const field = e.loc?.includes?.('body')
             ? fieldMap[e.loc[e.loc.length - 1]]
             : undefined
           if (field) {
-            setError(field, { message: e.msg.replace('Value error, ', '') })
+            newErrors[field] = e.msg.replace('Value error, ', '')
           } else {
-            setError('root', { message: e.msg })
+            newErrors.root = e.msg
           }
         }
+        setErrors(newErrors)
       } else {
         const message = 'No se pudo conectar con el servidor. Puedes reintentar.'
         setRetryPayload(data)
-        setError('root', { message })
+        setErrors({ root: message })
         addToast('error', message)
       }
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 p-4 transition-colors duration-300">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-md w-full bg-white dark:bg-gray-900 rounded-2xl shadow-xl overflow-hidden"
+      <div
+        className="animate-fade-in-up max-w-md w-full bg-white dark:bg-gray-900 rounded-2xl shadow-xl overflow-hidden"
       >
         <div className="bg-gray-900 dark:bg-black p-6 text-center border-b border-gray-800">
           <h2 className="text-2xl font-bold text-white flex items-center justify-center gap-2">
@@ -116,15 +153,15 @@ export default function RegisterPage() {
           <p className="text-gray-400 mt-2 text-sm">Únete a la plataforma Pegasus Mechanics</p>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="p-8 space-y-5">
+        <form onSubmit={onSubmit} className="p-8 space-y-5">
           {errors.root && (
             <div className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm border border-red-200 dark:border-red-800 flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
-              <span className="flex-1">{errors.root.message}</span>
+              <span className="flex-1">{errors.root}</span>
               {retryPayload && (
                 <button
                   type="button"
-                  onClick={() => onSubmit(retryPayload)}
+                  onClick={() => onSubmit(undefined, retryPayload)}
                   className="rounded-md border border-red-300 px-2 py-1 text-xs font-semibold hover:bg-red-100"
                 >
                   Reintentar
@@ -141,14 +178,16 @@ export default function RegisterPage() {
                   <User className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
-                  {...register('nombre')}
+                  name="nombre"
+                  value={formData.nombre}
+                  onChange={handleChange}
                   type="text"
                   className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-auteco-red focus:border-auteco-red transition-all sm:text-sm"
                   placeholder="Juan Pérez"
                 />
               </div>
               {errors.nombre && (
-                <p className="text-red-500 text-xs mt-1">{errors.nombre.message}</p>
+                <p className="text-red-500 text-xs mt-1">{errors.nombre}</p>
               )}
             </div>
 
@@ -159,14 +198,16 @@ export default function RegisterPage() {
                   <Mail className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
-                  {...register('email')}
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
                   type="email"
                   className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-auteco-red focus:border-auteco-red transition-all sm:text-sm"
                   placeholder="juan@ejemplo.com"
                 />
               </div>
               {errors.email && (
-                <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>
+                <p className="text-red-500 text-xs mt-1">{errors.email}</p>
               )}
             </div>
 
@@ -177,14 +218,16 @@ export default function RegisterPage() {
                   <Lock className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
-                  {...register('password')}
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
                   type="password"
                   className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-auteco-red focus:border-auteco-red transition-all sm:text-sm"
                   placeholder="••••••••"
                 />
               </div>
               {errors.password && (
-                <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>
+                <p className="text-red-500 text-xs mt-1">{errors.password}</p>
               )}
             </div>
 
@@ -195,14 +238,16 @@ export default function RegisterPage() {
                   <Lock className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
-                  {...register('confirmPassword')}
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
                   type="password"
                   className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-auteco-red focus:border-auteco-red transition-all sm:text-sm"
                   placeholder="••••••••"
                 />
               </div>
               {errors.confirmPassword && (
-                <p className="text-red-500 text-xs mt-1">{errors.confirmPassword.message}</p>
+                <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>
               )}
             </div>
 
@@ -213,7 +258,9 @@ export default function RegisterPage() {
                   <Building2 className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
-                  {...register('empresa_taller')}
+                  name="empresa_taller"
+                  value={formData.empresa_taller}
+                  onChange={handleChange}
                   type="text"
                   className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-auteco-red focus:border-auteco-red transition-all sm:text-sm"
                   placeholder="Tu taller (ej. MotoCenter)"
@@ -223,7 +270,9 @@ export default function RegisterPage() {
 
             <div className="flex items-start gap-2">
               <input
-                {...register('acceptTerms')}
+                name="acceptTerms"
+                checked={formData.acceptTerms}
+                onChange={handleChange}
                 type="checkbox"
                 id="acceptTerms"
                 className="mt-1 h-4 w-4 rounded border-gray-300 text-auteco-red focus:ring-auteco-red"
@@ -233,7 +282,7 @@ export default function RegisterPage() {
               </label>
             </div>
             {errors.acceptTerms && (
-              <p className="text-red-500 text-xs mt-1">{errors.acceptTerms.message}</p>
+              <p className="text-red-500 text-xs mt-1">{errors.acceptTerms}</p>
             )}
           </div>
 
@@ -263,7 +312,8 @@ export default function RegisterPage() {
             </button>
           </p>
         </form>
-      </motion.div>
+      </div>
     </div>
   )
 }
+

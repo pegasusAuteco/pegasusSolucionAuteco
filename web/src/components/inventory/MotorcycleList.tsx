@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import MotorcycleCard from './MotorcycleCard';
-import { Search, Plus } from 'lucide-react';
-import { useChatStore } from '@store/chatStore';
+import { Search } from 'lucide-react';
+import { useChatUI } from '@hooks/useChatUI';
 
 const MOCK_MOTOS = [
   {
@@ -104,7 +104,7 @@ const MOCK_MOTOS = [
 
 const MotorcycleList = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const setPendingChatInput = useChatStore((s) => s.setPendingChatInput);
+  const { setPendingChatInput } = useChatUI();
 
   const handleMotoClick = (name: string, displacement: string) => {
     setPendingChatInput(

@@ -1,19 +1,22 @@
-import { useForm } from 'react-hook-form';
-import { useWorkshopStore, MotorcycleEntry } from '../../store/workshopStore';
+import { useState } from 'react';
+import { z } from 'zod';
+import { useWorkshop, MotorcycleEntry } from '@hooks/useWorkshop';
 import { useToastStore } from '../../store/toastStore';
 import { ClipboardList, PlusCircle, Save, X } from 'lucide-react';
-import { format } from 'date-fns';
+import { getLocalISODate } from '../../utils/dates';
 
-interface ReceptionFormData {
-  clientName: string;
-  clientId: string;
-  email: string;
-  model: string;
-  plate: string;
-  mileage: number;
-  entryDate: string;
-  observations: string;
-}
+const receptionSchema = z.object({
+  clientName: z.string().min(1, 'El nombre del cliente es requerido'),
+  clientId: z.string().min(1, 'El documento es requerido'),
+  email: z.string().email('Formato de correo inválido').or(z.literal('')).optional(),
+  entryDate: z.string().min(1, 'La fecha es requerida'),
+  model: z.string().min(1, 'La marca/modelo es requerida'),
+  plate: z.string().min(1, 'La placa es requerida'),
+  mileage: z.number({ invalid_type_error: 'El kilometraje es requerido' }).min(0, 'Debe ser un valor positivo'),
+  observations: z.string().min(1, 'Las observaciones son requeridas').max(500, 'Máximo 500 caracteres'),
+});
+
+type ReceptionFormData = z.infer<typeof receptionSchema>;
 
 const MODELS = [
   'Advance R 110',
@@ -37,39 +40,56 @@ interface ReceptionFormProps {
 }
 
 export default function ReceptionForm({ initialData, onSuccess, onCancel }: ReceptionFormProps) {
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<ReceptionFormData>({
-    defaultValues: initialData ? {
-      clientName: initialData.clientName,
-      clientId: initialData.clientId,
-      email: initialData.email || '',
-      model: initialData.model,
-      plate: initialData.plate,
-      mileage: initialData.mileage,
-      entryDate: initialData.entryDate || format(new Date(), 'yyyy-MM-dd'),
-      observations: initialData.observations,
-    } : {
-      entryDate: format(new Date(), 'yyyy-MM-dd')
-    }
+  const [formData, setFormData] = useState<ReceptionFormData>({
+    clientName: initialData?.clientName ?? '',
+    clientId: initialData?.clientId ?? '',
+    email: initialData?.email ?? '',
+    entryDate: initialData?.entryDate ?? getLocalISODate(),
+    model: initialData?.model ?? '',
+    plate: initialData?.plate ?? '',
+    mileage: initialData?.mileage ?? ('' as unknown as number),
+    observations: initialData?.observations ?? '',
   });
-  
-  const registerEntry = useWorkshopStore((state) => state.registerEntry);
-  const updateEntry = useWorkshopStore((state) => state.updateEntry);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const { registerEntry, updateEntry } = useWorkshop();
   const addToast = useToastStore((state) => state.addToast);
 
-  const onSubmit = (data: ReceptionFormData) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: name === 'mileage' ? (value === '' ? ('' as unknown as number) : Number(value)) : value,
+    }));
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
+  };
+
+  const onSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const result = receptionSchema.safeParse(formData);
+    if (!result.success) {
+      const formattedErrors: Record<string, string> = {};
+      result.error.issues.forEach((issue) => {
+        const key = String(issue.path[0]);
+        if (!formattedErrors[key]) formattedErrors[key] = issue.message;
+      });
+      setErrors(formattedErrors);
+      return;
+    }
+
+    const data = result.data;
+
     if (initialData) {
       updateEntry(initialData.id, {
         clientName: data.clientName,
         clientId: data.clientId,
-        email: data.email,
+        email: data.email || '',
         model: data.model,
         plate: data.plate.toUpperCase(),
-        mileage: Number(data.mileage),
+        mileage: data.mileage,
         entryDate: data.entryDate,
         observations: data.observations,
       });
@@ -79,17 +99,32 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }: Rece
       registerEntry({
         clientName: data.clientName,
         clientId: data.clientId,
-        email: data.email,
+        email: data.email || '',
         model: data.model,
         plate: data.plate.toUpperCase(),
-        mileage: Number(data.mileage),
+        mileage: data.mileage,
         entryDate: data.entryDate,
         observations: data.observations,
       });
       addToast('success', 'Registro guardado correctamente');
-      reset({ entryDate: format(new Date(), 'yyyy-MM-dd') });
+      setFormData({
+        clientName: '',
+        clientId: '',
+        email: '',
+        entryDate: getLocalISODate(),
+        model: '',
+        plate: '',
+        mileage: '' as unknown as number,
+        observations: '',
+      });
+      setErrors({});
     }
   };
+
+  const inputClass = (field: string) =>
+    `w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border ${
+      errors[field] ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'
+    } rounded-lg focus:ring-2 focus:ring-auteco-red dark:text-white outline-none text-sm transition-colors`;
 
   return (
     <div className="w-full max-w-2xl mx-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm p-6 sm:p-8 font-sans transition-colors duration-300">
@@ -98,19 +133,21 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }: Rece
         <h2 className="text-xl font-bold text-auteco-blue dark:text-white tracking-tight">Registro de Ingreso</h2>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={onSubmit} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          
+
           {/* Cliente */}
           <div className="space-y-2">
             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">Cliente</label>
             <input
               type="text"
+              name="clientName"
+              value={formData.clientName}
+              onChange={handleChange}
               placeholder="Nombre del cliente"
-              {...register('clientName', { required: 'El nombre del cliente es requerido' })}
-              className={`w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border ${errors.clientName ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'} rounded-lg focus:ring-2 focus:ring-auteco-red dark:text-white outline-none text-sm transition-colors`}
+              className={inputClass('clientName')}
             />
-            {errors.clientName && <p className="text-xs text-red-500">{errors.clientName.message}</p>}
+            {errors.clientName && <p className="text-xs text-red-500">{errors.clientName}</p>}
           </div>
 
           {/* CC/NIT */}
@@ -118,11 +155,13 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }: Rece
             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">CC/NIT</label>
             <input
               type="text"
+              name="clientId"
+              value={formData.clientId}
+              onChange={handleChange}
               placeholder="Documento"
-              {...register('clientId', { required: 'El documento es requerido' })}
-              className={`w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border ${errors.clientId ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'} rounded-lg focus:ring-2 focus:ring-auteco-red dark:text-white outline-none text-sm transition-colors`}
+              className={inputClass('clientId')}
             />
-            {errors.clientId && <p className="text-xs text-red-500">{errors.clientId.message}</p>}
+            {errors.clientId && <p className="text-xs text-red-500">{errors.clientId}</p>}
           </div>
 
           {/* Correo */}
@@ -130,13 +169,13 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }: Rece
             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">Correo Electrónico</label>
             <input
               type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
               placeholder="usuario@dominio.com"
-              {...register('email', { 
-                pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Formato de correo inválido' }
-              })}
-              className={`w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border ${errors.email ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'} rounded-lg focus:ring-2 focus:ring-auteco-red dark:text-white outline-none text-sm transition-colors`}
+              className={inputClass('email')}
             />
-            {errors.email && <p className="text-xs text-red-500">{errors.email.message}</p>}
+            {errors.email && <p className="text-xs text-red-500">{errors.email}</p>}
           </div>
 
           {/* Fecha de ingreso */}
@@ -144,25 +183,29 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }: Rece
             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">Fecha de Ingreso</label>
             <input
               type="date"
-              {...register('entryDate', { required: 'La fecha es requerida' })}
-              className={`w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border ${errors.entryDate ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'} rounded-lg focus:ring-2 focus:ring-auteco-red dark:text-white outline-none text-sm transition-colors`}
+              name="entryDate"
+              value={formData.entryDate}
+              onChange={handleChange}
+              className={inputClass('entryDate')}
             />
-            {errors.entryDate && <p className="text-xs text-red-500">{errors.entryDate.message}</p>}
+            {errors.entryDate && <p className="text-xs text-red-500">{errors.entryDate}</p>}
           </div>
 
           {/* Marca / Modelo */}
           <div className="space-y-2">
             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">Marca / Modelo</label>
             <select
-              {...register('model', { required: 'La marca/modelo es requerida' })}
-              className={`w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border ${errors.model ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'} rounded-lg focus:ring-2 focus:ring-auteco-red dark:text-white outline-none text-sm transition-colors`}
+              name="model"
+              value={formData.model}
+              onChange={handleChange}
+              className={inputClass('model')}
             >
               <option value="">Seleccione una marca...</option>
               {MODELS.map((model) => (
                 <option key={model} value={model}>{model}</option>
               ))}
             </select>
-            {errors.model && <p className="text-xs text-red-500">{errors.model.message}</p>}
+            {errors.model && <p className="text-xs text-red-500">{errors.model}</p>}
           </div>
 
           {/* Placa */}
@@ -170,11 +213,13 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }: Rece
             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">Placa</label>
             <input
               type="text"
+              name="plate"
+              value={formData.plate}
+              onChange={handleChange}
               placeholder="Ej: ABC12D"
-              {...register('plate', { required: 'La placa es requerida' })}
-              className={`w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border ${errors.plate ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'} rounded-lg focus:ring-2 focus:ring-auteco-red dark:text-white outline-none text-sm uppercase transition-colors`}
+              className={`${inputClass('plate')} uppercase`}
             />
-            {errors.plate && <p className="text-xs text-red-500">{errors.plate.message}</p>}
+            {errors.plate && <p className="text-xs text-red-500">{errors.plate}</p>}
           </div>
 
           {/* Kilometraje */}
@@ -183,34 +228,31 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }: Rece
             <div className="relative">
               <input
                 type="number"
+                name="mileage"
+                value={formData.mileage as unknown as string}
+                onChange={handleChange}
                 placeholder="0"
                 min="0"
-                {...register('mileage', { 
-                  required: 'El kilometraje es requerido',
-                  min: { value: 0, message: 'Debe ser un valor positivo' },
-                  valueAsNumber: true
-                })}
-                className={`w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border ${errors.mileage ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'} rounded-lg focus:ring-2 focus:ring-auteco-red dark:text-white outline-none text-sm transition-colors`}
+                className={inputClass('mileage')}
               />
               <span className="absolute right-4 top-2.5 text-gray-400 dark:text-gray-500 font-medium text-sm">km</span>
             </div>
-            {errors.mileage && <p className="text-xs text-red-500">{errors.mileage.message}</p>}
+            {errors.mileage && <p className="text-xs text-red-500">{errors.mileage}</p>}
           </div>
 
           {/* Observaciones */}
           <div className="space-y-2 md:col-span-2">
             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">Observaciones</label>
             <textarea
+              name="observations"
+              value={formData.observations}
+              onChange={handleChange}
               rows={4}
               maxLength={500}
               placeholder="Detalle el estado inicial de la moto..."
-              {...register('observations', { 
-                required: 'Las observaciones son requeridas',
-                maxLength: { value: 500, message: 'Máximo 500 caracteres' }
-              })}
-              className={`w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border ${errors.observations ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'} rounded-lg focus:ring-2 focus:ring-auteco-red dark:text-white outline-none text-sm resize-none transition-colors`}
+              className={`${inputClass('observations')} resize-none`}
             />
-            {errors.observations && <p className="text-xs text-red-500">{errors.observations.message}</p>}
+            {errors.observations && <p className="text-xs text-red-500">{errors.observations}</p>}
           </div>
         </div>
 
