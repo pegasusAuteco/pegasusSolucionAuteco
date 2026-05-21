@@ -1,6 +1,6 @@
-import React, { useState, useRef } from 'react'
-import { motion } from 'framer-motion'
-import { BarChart3, Users, MessageSquare, Activity, FilePlus2, Upload, X, Construction, Zap } from 'lucide-react'
+import { useState, useRef } from 'react'
+
+import { Users, MessageSquare, Activity, FilePlus2, Upload, X, Construction, Zap } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { analyticsService } from '@services/api'
 
@@ -77,10 +77,8 @@ export default function AdminPage() {
       </div>
 
       {/* In-Progress Banner */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden bg-gradient-to-r from-gray-900 to-gray-800 dark:from-auteco-red/20 dark:to-gray-900 rounded-2xl p-5 mb-6 border border-gray-200 dark:border-auteco-red/30"
+      <div
+        className="animate-fade-in-up relative overflow-hidden bg-gradient-to-r from-gray-900 to-gray-800 dark:from-auteco-red/20 dark:to-gray-900 rounded-2xl p-5 mb-6 border border-gray-200 dark:border-auteco-red/30"
       >
         <div className="absolute -top-6 -right-6 w-24 h-24 bg-auteco-red/10 rounded-full blur-2xl" />
         <div className="absolute -bottom-4 -left-4 w-20 h-20 bg-blue-500/10 rounded-full blur-2xl" />
@@ -94,44 +92,37 @@ export default function AdminPage() {
           </div>
         </div>
         <div className="mt-4 w-full bg-gray-700 rounded-full h-1.5 relative z-10">
-          <motion.div
-            initial={{ width: '0%' }}
-            animate={{ width: '62%' }}
-            transition={{ duration: 1.5, ease: 'easeOut', delay: 0.3 }}
-            className="h-1.5 rounded-full bg-gradient-to-r from-auteco-red to-orange-400"
+          <div
+            className="h-1.5 rounded-full bg-gradient-to-r from-auteco-red to-orange-400 w-[62%]"
           />
         </div>
         <p className="text-right text-xs text-gray-500 mt-1 relative z-10">62% completado</p>
-      </motion.div>
+      </div>
 
       {/* Metric Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         {displayMetrics.map((card, i) => {
           const Icon = card.icon;
           return (
-            <motion.div
+            <div
               key={card.label}
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 + 0.4 }}
-              className="relative bg-white dark:bg-gray-900/60 border border-gray-100 dark:border-gray-800 rounded-xl p-4 overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+              style={{ animationDelay: `${i * 100}ms` }}
+              className="animate-fade-in-up relative bg-white dark:bg-gray-900/60 border border-gray-100 dark:border-gray-800 rounded-xl p-4 overflow-hidden shadow-sm hover:shadow-md transition-shadow"
             >
               <div className={`w-8 h-8 ${card.bg} rounded-lg flex items-center justify-center mb-3`}>
                 <Icon className={`w-4 h-4 ${card.color}`} />
               </div>
               <p className="text-2xl font-bold text-gray-800 dark:text-gray-100">{card.value}</p>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{card.label}</p>
-            </motion.div>
+            </div>
           );
         })}
       </div>
 
       {/* Manual Upload Section */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.7 }}
-        className="bg-white dark:bg-gray-900/60 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-sm"
+      <div
+        style={{ animationDelay: '700ms' }}
+        className="animate-fade-in-up bg-white dark:bg-gray-900/60 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-sm"
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-gray-700 dark:text-gray-200 flex items-center gap-2">
@@ -188,7 +179,7 @@ export default function AdminPage() {
             </p>
           )}
         </div>
-      </motion.div>
+      </div>
     </div>
   )
 }

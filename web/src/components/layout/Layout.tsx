@@ -4,7 +4,7 @@ import MotorcycleList from '../inventory/MotorcycleList';
 import { MessageSquare, Plus, LogOut, Bike, X, BarChart3, Wrench } from 'lucide-react';
 import { useAuthStore } from '@store/authStore';
 import { useNavigate } from 'react-router-dom';
-import { useChatStore } from '@store/chatStore';
+import { useChatUI } from '@hooks/useChatUI';
 import {
   useConversations,
   useCreateConversation,
@@ -30,7 +30,7 @@ const Layout = () => {
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
 
   const creatingConversation = useRef(false);
-  const { activeConversationId, setActiveConversation } = useChatStore();
+  const { activeConversationId, setActiveConversation } = useChatUI();
   const { data: conversations } = useConversations();
   const createConversation = useCreateConversation();
   const renameConversation = useRenameConversation();

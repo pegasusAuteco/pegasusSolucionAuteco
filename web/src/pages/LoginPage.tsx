@@ -1,8 +1,6 @@
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { motion } from 'framer-motion'
+
 import { Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react'
 import { useLogin } from '@hooks/useAuth'
 import { useAuthStore } from '@store/authStore'
@@ -21,28 +19,47 @@ export default function LoginPage() {
   const addToast = useToastStore((s) => s.addToast)
   const navigate = useNavigate()
   const loginMutation = useLogin()
+  
+  const [formData, setFormData] = useState<LoginForm>({ email: '', password: '' })
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [retryPayload, setRetryPayload] = useState<LoginForm | null>(null)
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-    setError,
-  } = useForm<LoginForm>({
-    resolver: zodResolver(loginSchema),
-  })
 
   if (isAuthenticated) return <Navigate to="/chat" replace />
 
-  const onSubmit = async (data: LoginForm) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value })
+    // Clear error when typing
+    if (errors[e.target.name]) {
+      setErrors({ ...errors, [e.target.name]: '' })
+    }
+  }
+
+  const onSubmit = async (e?: React.FormEvent, dataToSubmit?: LoginForm) => {
+    if (e) e.preventDefault()
+    
+    const data = dataToSubmit || formData
+    
+    // Validation
+    const result = loginSchema.safeParse(data)
+    if (!result.success) {
+      const formattedErrors: Record<string, string> = {}
+      result.error.issues.forEach(issue => {
+        formattedErrors[issue.path[0]] = issue.message
+      })
+      setErrors(formattedErrors)
+      return
+    }
+
     if (!navigator.onLine) {
       const message = 'Sin conexión. Verifica tu internet y vuelve a intentarlo.'
       setRetryPayload(data)
-      setError('root', { message })
+      setErrors({ root: message })
       addToast('error', message)
       return
     }
 
+    setIsSubmitting(true)
     try {
       await loginMutation.mutateAsync(data)
       setRetryPayload(null)
@@ -51,20 +68,20 @@ export default function LoginPage() {
       const detail = isNetworkError
         ? 'No se pudo conectar con el servidor. Puedes reintentar.'
         : err?.response?.data?.detail || 'Error de conexión. Inténtalo de nuevo.'
-      setError('root', { message: detail })
+      setErrors({ root: detail })
       if (isNetworkError) {
         setRetryPayload(data)
         addToast('error', detail)
       }
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 p-4 transition-colors duration-300">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-md w-full bg-white dark:bg-gray-900 rounded-2xl shadow-xl overflow-hidden"
+      <div
+        className="animate-fade-in-up max-w-md w-full bg-white dark:bg-gray-900 rounded-2xl shadow-xl overflow-hidden"
       >
         <div className="bg-auteco-red p-6 text-center">
           <img src="/logo.png" alt="Pegasus Mechanics" className="h-16 mx-auto object-contain drop-shadow-md mb-4 brightness-0 invert" />
@@ -72,15 +89,15 @@ export default function LoginPage() {
           <p className="text-red-100 mt-2 text-sm">Accede al panel de control de Pegasus</p>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="p-8 space-y-6">
+        <form onSubmit={onSubmit} className="p-8 space-y-6">
           {errors.root && (
             <div className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm border border-red-200 dark:border-red-800 flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
-              <span className="flex-1">{errors.root.message}</span>
+              <span className="flex-1">{errors.root}</span>
               {retryPayload && (
                 <button
                   type="button"
-                  onClick={() => onSubmit(retryPayload)}
+                  onClick={() => onSubmit(undefined, retryPayload)}
                   className="rounded-md border border-red-300 px-2 py-1 text-xs font-semibold hover:bg-red-100"
                 >
                   Reintentar
@@ -97,14 +114,16 @@ export default function LoginPage() {
                   <Mail className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
-                  {...register('email')}
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
                   type="email"
                   className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-auteco-red focus:border-auteco-red transition-all sm:text-sm"
                   placeholder="admin@pegasus.com"
                 />
               </div>
               {errors.email && (
-                <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>
+                <p className="text-red-500 text-xs mt-1">{errors.email}</p>
               )}
             </div>
 
@@ -115,14 +134,16 @@ export default function LoginPage() {
                   <Lock className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
-                  {...register('password')}
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
                   type="password"
                   className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-auteco-red focus:border-auteco-red transition-all sm:text-sm"
                   placeholder="••••••••"
                 />
               </div>
               {errors.password && (
-                <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>
+                <p className="text-red-500 text-xs mt-1">{errors.password}</p>
               )}
             </div>
           </div>
@@ -156,7 +177,7 @@ export default function LoginPage() {
             </button>
           </p>
         </form>
-      </motion.div>
+      </div>
     </div>
   )
 }

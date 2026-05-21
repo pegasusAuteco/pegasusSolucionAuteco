@@ -10,10 +10,12 @@ Web app (mobile-first responsive) for motorcycle repair shops. Employees can con
 | **Build Tool** | Vite |
 | **Components** | Lucide React + Custom components |
 | **State Management** | Zustand + TanStack Query |
-| **Backend** | FastAPI or Node.js (NestJS) |
-| **Database** | PostgreSQL |
-| **Vector Store** | Qdrant |
-| **LLM** | OpenAI / Claude / Local (Ollama) |
+| **Backend** | FastAPI (Python) |
+| **Database** | PostgreSQL (usuarios) + Supabase pgvector (RAG) |
+| **Session Cache** | Redis |
+| **Logs** | MongoDB |
+| **Vector Store** | Supabase pgvector |
+| **LLM** | OpenAI gpt-4o-mini + text-embedding-3-small |
 
 ## Features
 
@@ -32,46 +34,46 @@ Web app (mobile-first responsive) for motorcycle repair shops. Employees can con
 ## Project Structure
 
 ```
-motorconnect/
-├── web/ # React + Vite app
-│ ├── src/
-│ │ ├── pages/ # Routes: login, chat, history, profile, admin
-│ │ ├── components/ # Reusable UI components
-│ │ │ ├── auth/ # Login, signup forms
-│ │ │ ├── chat/ # Chat interface
-│ │ │ ├── layout/ # Navbar, sidebar, footer
-│ │ │ └── shared/ # Buttons, modals, cards, etc.
-│ │ ├── hooks/ # Custom hooks (useChat, useAuth, useHistory)
-│ │ ├── services/ # API client, RAG service
-│ │ ├── store/ # Zustand stores (auth, chat, ui)
-│ │ ├── types/ # TypeScript interfaces
-│ │ ├── utils/ # Helpers, constants
-│ │ ├── App.tsx
-│ │ └── main.tsx
-│ ├── public/
-│ ├── package.json
-│ ├── tsconfig.json
-│ ├── vite.config.ts
-│ ├── tailwind.config.js
-│ ├── postcss.config.js
-│ ├── nginx.conf
-│ └── Dockerfile
-├── backend/ # FastAPI or NestJS
-│ ├── auth/ # JWT authentication, roles
-│ ├── chat/
-│ │ ├── use_cases/ # Chat business logic
-│ │ └── models/ # Message, Conversation, Motorcycle
-│ ├── rag/
-│ │ ├── ingestion/ # Load manuals to vector store
-│ │ ├── retrieval/ # Semantic and hybrid search
-│ │ └── generation/ # Prompt engineering + LLM
-│ ├── history/ # Conversation CRUD
-│ ├── analytics/ # Usage stats by role
-│ ├── vector_store/ # Qdrant config
-│ ├── requirements.txt
-│ └── Dockerfile
-├── knowledge_base/ # PDFs, manuals, diagrams
-├── docker-compose.yml
+pegasusSolucionAuteco/
+├── web/                        # Frontend React + Vite + TypeScript
+│   ├── src/
+│   │   ├── pages/              # Rutas: login, chat, history, profile, admin
+│   │   ├── components/         # Componentes reutilizables
+│   │   │   ├── auth/
+│   │   │   ├── chat/
+│   │   │   ├── layout/
+│   │   │   └── workshop/
+│   │   ├── store/              # Zustand: authStore, chatStore, workshopStore
+│   │   ├── services/           # Axios + interceptores JWT
+│   │   └── types/
+│   ├── nginx.conf
+│   └── Dockerfile
+├── backend/                    # FastAPI (Python)
+│   ├── auth/                   # JWT, roles, registro
+│   ├── chat/                   # Endpoints de conversación + RAG
+│   ├── rag/
+│   │   ├── retrieval/          # Búsqueda semántica en Supabase
+│   │   └── generation/         # Prompt + llamada al LLM
+│   ├── logs/                   # Redis (hot) → MongoDB (cold)
+│   ├── vector_store/           # Cliente Supabase pgvector
+│   ├── database.py             # SQLAlchemy async engine
+│   ├── config.py               # pydantic-settings
+│   ├── main.py                 # FastAPI app entry point
+│   ├── create_admin.py         # Script one-time: crear primer admin
+│   ├── requirements.txt
+│   └── Dockerfile
+├── scripts/                    # Utilidades de setup y operaciones (one-time)
+│   ├── ingestion/
+│   │   └── ingestaManuales.py  # Carga PDFs de motos/ → Supabase manuales_chunks
+│   └── db/
+│       └── apply_schema.py     # Crea tablas en Supabase vía conexión directa
+├── supabase/                   # Infraestructura de base de datos
+│   └── schema_usuarios.sql     # DDL: tabla usuarios, enum roles, trigger updated_at
+├── knowledge_base/             # fallas_comunes.json (base de diagnósticos)
+├── motos/                      # PDFs de manuales técnicos de motos Auteco
+├── documents/                  # Documentación interna del proyecto
+├── docker-compose.yaml
+├── .env
 ├── .env.example
 └── README.md
 ```
@@ -107,10 +109,23 @@ cp .env.example .env
 docker-compose up -d
 
 # 3. Access the app
-# Frontend: http://localhost:5173
+# Frontend:    http://localhost:5173
 # Backend API: http://localhost:8001
-# Qdrant: http://localhost:6333
-# Database: localhost:5433
+# Swagger:     http://localhost:8001/docs
+# Database:    localhost:5433
+```
+
+## Scripts de setup (one-time)
+
+```bash
+# 1. Crear tablas en Supabase (requiere SUPABASE_DB_PASSWORD en .env)
+python scripts/db/apply_schema.py
+
+# 2. Crear primer usuario admin (requiere Docker con la BD corriendo)
+docker exec motorconnect-backend python3 create_admin.py
+
+# 3. Cargar manuales PDF a Supabase manuales_chunks (requiere OPENAI_API_KEY)
+python scripts/ingestion/ingestaManuales.py
 ```
 
 ## Módulo de Diagnóstico de Fallas (RAG)

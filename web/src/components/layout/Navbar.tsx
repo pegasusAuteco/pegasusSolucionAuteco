@@ -2,7 +2,6 @@ import { Link, useLocation } from 'react-router-dom'
 import { MessageSquare, History, User, LogOut, Shield } from 'lucide-react'
 import { useAuthStore } from '@store/authStore'
 import { useLogout } from '@hooks/useAuth'
-import { cn } from '@utils/cn'
 
 const navItems = [
   { path: '/chat', label: 'Chat', icon: MessageSquare },
@@ -25,12 +24,11 @@ export default function Navbar() {
           <Link
             key={path}
             to={path}
-            className={cn(
-              'flex flex-col items-center gap-1 px-3 py-2 text-xs md:flex-row md:text-sm md:rounded-lg',
+            className={`flex flex-col items-center gap-1 px-3 py-2 text-xs md:flex-row md:text-sm md:rounded-lg ${
               location.pathname === path
                 ? 'text-primary-600 md:bg-primary-50'
-                : 'text-gray-500 hover:text-gray-700',
-            )}
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
           >
             <Icon className="h-5 w-5" />
             <span>{label}</span>
@@ -39,12 +37,11 @@ export default function Navbar() {
         {user?.role === 'admin' && (
           <Link
             to="/admin"
-            className={cn(
-              'flex flex-col items-center gap-1 px-3 py-2 text-xs md:flex-row md:text-sm md:rounded-lg',
+            className={`flex flex-col items-center gap-1 px-3 py-2 text-xs md:flex-row md:text-sm md:rounded-lg ${
               location.pathname === '/admin'
                 ? 'text-primary-600 md:bg-primary-50'
-                : 'text-gray-500 hover:text-gray-700',
-            )}
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
           >
             <Shield className="h-5 w-5" />
             <span>Admin</span>
