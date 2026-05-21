@@ -79,8 +79,11 @@ CREATE TRIGGER set_ingresos_taller_updated_at
 -- RLS: deshabilitado (el backend usa service_role)
 ALTER TABLE ingresos_taller DISABLE ROW LEVEL SECURITY;
 
-
+--------------------------------------------------------------
 (((((A TENER EN CUENTA PARA MOSTRAR INFORMACION POR ROLES)))))
+(((((A TENER EN CUENTA PARA MOSTRAR INFORMACION POR ROLES)))))
+(((((A TENER EN CUENTA PARA MOSTRAR INFORMACION POR ROLES)))))
+
 /*
 =============================================================================
 GUÍA DE IMPLEMENTACIÓN: VISTA PARA MECÁNICOS (FRONTEND & BACKEND)
@@ -131,4 +134,35 @@ SELECT
 FROM ingresos_taller;
 
 
-FROM ingresos_taller;
+/*
+=============================================================================
+NOTAS DE ARQUITECTURA: ASIGNACIÓN DE MOTOS A MECÁNICOS
+=============================================================================
+Flujo de trabajo: 
+1. La recepcionista registra la moto (entra a la fila general sin asignar).
+2. El mecánico entra al panel, ve las motos disponibles y hace clic en "Tomar".
+
+¿Cómo estructurar esto en la Base de Datos? Existen 2 caminos:
+
+CAMINO 1: El enfoque rápido (MVP / Más fácil de programar)
+-----------------------------------------------------------------------------
+Ideal si una moto solo la arregla un mecánico de principio a fin.
+Se deben agregar estas dos columnas a la tabla `ingresos_taller`:
+    mecanico_id INTEGER REFERENCES usuarios(id) ON DELETE SET NULL
+    estado VARCHAR(50) DEFAULT 'en_cola'
+* Cuando el mecánico presiona el botón, el backend hace un UPDATE y asigna su ID.
+* Si mecanico_id es NULL -> Se muestra en la fila general.
+
+CAMINO 2: El enfoque profesional (Recomendado para Trazabilidad/Historial)
+-----------------------------------------------------------------------------
+Ideal si quieres guardar historial (ej. Carlos trabajó 2h, luego Juan trabajó 1h).
+Se debe crear una NUEVA TABLA llamada `asignaciones_taller`:
+    CREATE TABLE asignaciones_taller (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        ingreso_id UUID REFERENCES ingresos_taller(id),
+        mecanico_id INTEGER REFERENCES usuarios(id),
+        fecha_inicio TIMESTAMPTZ DEFAULT now()
+    );
+* Cuando el mecánico presiona el botón, el backend hace un INSERT aquí.
+=============================================================================
+*/
