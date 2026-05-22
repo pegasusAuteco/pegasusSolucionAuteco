@@ -82,7 +82,7 @@ pegasusSolucionAuteco/
 
 The system manages three main roles with different access levels:
 
-- **Mechanic** (`mecanico@pegasus.com` / `Meca1234`)
+## **Mechanic** (`mecanico@pegasus.com` / `Meca1234`)
 
 - Viewes only the Repair Queue.
 
@@ -90,7 +90,7 @@ The system manages three main roles with different access levels:
 
 - Has access to the AI ​​Chat for technical inquiries.
 
-- **Secretary** (`secretario@pegasus.com` / `Secre1234`)
+## **Secretary** (`secretario@pegasus.com` / `Secre1234`)
 
 - Has access to the complete management of the Pegasus Workshop.
 
@@ -98,7 +98,7 @@ The system manages three main roles with different access levels:
 
 - Access to the chat and other management tools.
 
-- **Admin** (`admin@pegasus.com` / `Admin1234`)
+## **Admin** (`admin@pegasus.com` / `Admin1234`)
 
 - Full access to all Secretary and Mechanic functionalities.
 
