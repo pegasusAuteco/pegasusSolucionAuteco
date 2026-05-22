@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useWorkshop, MotorcycleEntry } from '@hooks/useWorkshop';
+import { useAddPart, useRemovePart, useDeleteMotorcycle, useFinishRepair } from '@hooks/useWorkshop';
+import type { MotorcycleEntry } from '@hooks/useWorkshop';
 import { Clock, Wrench, Plus, CheckCircle2, Package, Edit, Trash2, FileText } from 'lucide-react';
 import { formatRelativeTime } from '../../utils/dates';
 import ReceptionForm from './ReceptionForm';
@@ -13,8 +14,11 @@ export default function MotorcycleCard({ entry }: MotorcycleCardProps) {
   const [partQty, setPartQty] = useState(1);
   const [timeElapsed, setTimeElapsed] = useState('');
   const [isEditing, setIsEditing] = useState(false);
-  
-  const { addPartToEntry, removeEntry, removePartFromEntry, finishRepair } = useWorkshop();
+
+  const addPartMutation = useAddPart();
+  const removePartMutation = useRemovePart();
+  const deleteMutation = useDeleteMotorcycle();
+  const finishMutation = useFinishRepair();
 
   useEffect(() => {
     const updateTimer = () => {
@@ -28,12 +32,10 @@ export default function MotorcycleCard({ entry }: MotorcycleCardProps) {
   const handleAddPart = (e: React.FormEvent) => {
     e.preventDefault();
     if (partName.trim() && partQty > 0) {
-      addPartToEntry(entry.id, {
-        name: partName.trim(),
-        quantity: partQty,
-      });
-      setPartName('');
-      setPartQty(1);
+      addPartMutation.mutate(
+        { motorcycleId: entry.id, name: partName.trim(), quantity: partQty },
+        { onSuccess: () => { setPartName(''); setPartQty(1); } },
+      );
     }
   };
 
@@ -149,7 +151,7 @@ export default function MotorcycleCard({ entry }: MotorcycleCardProps) {
                       </td>
                       <td className="px-3 py-2 text-center">
                         <button
-                          onClick={() => removePartFromEntry(entry.id, part.id)}
+                          onClick={() => removePartMutation.mutate({ motorcycleId: entry.id, partId: part.id })}
                           title="Eliminar repuesto"
                           className="p-1 text-gray-400 hover:text-auteco-red hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
                         >
@@ -182,7 +184,7 @@ export default function MotorcycleCard({ entry }: MotorcycleCardProps) {
               Editar
             </button>
             <button
-              onClick={() => finishRepair(entry.id)}
+              onClick={() => finishMutation.mutate(entry.id)}
               title="Finalizar"
               className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50 rounded-lg transition-colors"
             >
@@ -194,7 +196,7 @@ export default function MotorcycleCard({ entry }: MotorcycleCardProps) {
           <button
             onClick={() => {
               if(confirm('¿Seguro que deseas cerrar este pedido? El registro se eliminará de la lista.')) {
-                removeEntry(entry.id);
+                deleteMutation.mutate(entry.id);
               }
             }}
             title="Cerrar Pedido"

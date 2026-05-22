@@ -62,3 +62,66 @@ export interface AdminStats {
   total_messages: number
   users: UserStats[]
 }
+
+// ─── Workshop ─────────────────────────────────────────────────────────────────
+
+export interface Part {
+  id: string
+  name: string
+  quantity: number
+}
+
+export interface MotorcycleEntry {
+  id: string
+  clientName: string
+  clientId: string
+  email: string
+  entryDate: string
+  model: string
+  plate: string
+  mileage: number
+  observations: string
+  mechanicNotes?: string
+  createdAt: string
+  status: 'pending' | 'finished'
+  parts: Part[]
+}
+
+// Raw shape returned by the backend (snake_case)
+export interface MotorcycleEntryAPI {
+  id: string
+  client_name: string
+  client_id: string
+  email: string | null
+  model: string
+  plate: string
+  mileage: number
+  entry_date: string
+  observations: string
+  mechanic_notes: string | null
+  status: 'pending' | 'finished'
+  created_at: string
+  updated_at: string
+  parts: Array<{ id: string; motorcycle_id: string; name: string; quantity: number; created_at: string }>
+}
+
+export interface CreateMotorcycleData {
+  client_name: string
+  client_id: string
+  email?: string
+  model: string
+  plate: string
+  mileage: number
+  entry_date: string
+  observations: string
+}
+
+export interface UpdateMotorcycleData {
+  client_name?: string
+  client_id?: string
+  email?: string
+  model?: string
+  mileage?: number
+  observations?: string
+  mechanic_notes?: string
+}

@@ -1,5 +1,9 @@
 import { apiFetch } from '../lib/fetch'
-import type { AuthResponse, LoginCredentials, RegisterData, RegisterResponseData, Conversation, Message, UserStats, AdminStats } from '@types'
+import type {
+  AuthResponse, LoginCredentials, RegisterData, RegisterResponseData,
+  Conversation, Message, UserStats, AdminStats,
+  MotorcycleEntry, MotorcycleEntryAPI, CreateMotorcycleData, UpdateMotorcycleData,
+} from '@types'
 
 const baseURL = import.meta.env.VITE_API_URL || '/api'
 
@@ -51,4 +55,65 @@ export const historyService = {
 export const analyticsService = {
   myStats: () => apiFetch<UserStats>(`${baseURL}/analytics/me`),
   adminStats: () => apiFetch<AdminStats>(`${baseURL}/analytics/admin`),
+}
+
+// ─── Workshop ─────────────────────────────────────────────────────────────────
+
+function mapMotorcycle(m: MotorcycleEntryAPI): MotorcycleEntry {
+  return {
+    id: m.id,
+    clientName: m.client_name,
+    clientId: m.client_id,
+    email: m.email ?? '',
+    entryDate: m.entry_date,
+    model: m.model,
+    plate: m.plate,
+    mileage: m.mileage,
+    observations: m.observations,
+    mechanicNotes: m.mechanic_notes ?? undefined,
+    createdAt: m.created_at,
+    status: m.status,
+    parts: m.parts.map((p) => ({ id: p.id, name: p.name, quantity: p.quantity })),
+  }
+}
+
+export const workshopService = {
+  list: (status?: 'pending' | 'finished') => {
+    const url = status
+      ? `${baseURL}/workshop/motorcycles?status=${status}`
+      : `${baseURL}/workshop/motorcycles`
+    return apiFetch<MotorcycleEntryAPI[]>(url).then((items) => items.map(mapMotorcycle))
+  },
+
+  create: (data: CreateMotorcycleData) =>
+    apiFetch<MotorcycleEntryAPI>(`${baseURL}/workshop/motorcycles`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }).then(mapMotorcycle),
+
+  update: (id: string, data: UpdateMotorcycleData) =>
+    apiFetch<MotorcycleEntryAPI>(`${baseURL}/workshop/motorcycles/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }).then(mapMotorcycle),
+
+  finish: (id: string) =>
+    apiFetch<MotorcycleEntryAPI>(`${baseURL}/workshop/motorcycles/${id}/finish`, {
+      method: 'PATCH',
+    }).then(mapMotorcycle),
+
+  remove: (id: string) =>
+    apiFetch<void>(`${baseURL}/workshop/motorcycles/${id}`, { method: 'DELETE' }),
+
+  addPart: (motorcycleId: string, part: { name: string; quantity: number }) =>
+    apiFetch<{ id: string; name: string; quantity: number }>(
+      `${baseURL}/workshop/motorcycles/${motorcycleId}/parts`,
+      { method: 'POST', body: JSON.stringify(part) },
+    ),
+
+  removePart: (motorcycleId: string, partId: string) =>
+    apiFetch<void>(
+      `${baseURL}/workshop/motorcycles/${motorcycleId}/parts/${partId}`,
+      { method: 'DELETE' },
+    ),
 }

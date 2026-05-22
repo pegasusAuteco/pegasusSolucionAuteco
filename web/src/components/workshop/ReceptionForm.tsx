@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { z } from 'zod';
-import { useWorkshop, MotorcycleEntry } from '@hooks/useWorkshop';
+import { useRegisterMotorcycle, useUpdateMotorcycle } from '@hooks/useWorkshop';
+import type { MotorcycleEntry } from '@hooks/useWorkshop';
 import { useToastStore } from '../../store/toastStore';
 import { ClipboardList, PlusCircle, Save, X } from 'lucide-react';
 import { getLocalISODate } from '../../utils/dates';
@@ -52,7 +53,8 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }: Rece
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const { registerEntry, updateEntry } = useWorkshop();
+  const registerMutation = useRegisterMotorcycle();
+  const updateMutation = useUpdateMotorcycle();
   const addToast = useToastStore((state) => state.addToast);
 
   const handleChange = (
@@ -83,41 +85,54 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }: Rece
     const data = result.data;
 
     if (initialData) {
-      updateEntry(initialData.id, {
-        clientName: data.clientName,
-        clientId: data.clientId,
-        email: data.email || '',
-        model: data.model,
-        plate: data.plate.toUpperCase(),
-        mileage: data.mileage,
-        entryDate: data.entryDate,
-        observations: data.observations,
-      });
-      addToast('success', 'Registro actualizado correctamente');
-      if (onSuccess) onSuccess();
+      updateMutation.mutate(
+        {
+          id: initialData.id,
+          client_name: data.clientName,
+          client_id: data.clientId,
+          email: data.email || undefined,
+          model: data.model,
+          mileage: data.mileage,
+          observations: data.observations,
+        },
+        {
+          onSuccess: () => {
+            addToast('success', 'Registro actualizado correctamente');
+            if (onSuccess) onSuccess();
+          },
+          onError: () => addToast('error', 'Error al actualizar el registro'),
+        },
+      );
     } else {
-      registerEntry({
-        clientName: data.clientName,
-        clientId: data.clientId,
-        email: data.email || '',
-        model: data.model,
-        plate: data.plate.toUpperCase(),
-        mileage: data.mileage,
-        entryDate: data.entryDate,
-        observations: data.observations,
-      });
-      addToast('success', 'Registro guardado correctamente');
-      setFormData({
-        clientName: '',
-        clientId: '',
-        email: '',
-        entryDate: getLocalISODate(),
-        model: '',
-        plate: '',
-        mileage: '' as unknown as number,
-        observations: '',
-      });
-      setErrors({});
+      registerMutation.mutate(
+        {
+          client_name: data.clientName,
+          client_id: data.clientId,
+          email: data.email || undefined,
+          model: data.model,
+          plate: data.plate.toUpperCase(),
+          mileage: data.mileage,
+          entry_date: data.entryDate,
+          observations: data.observations,
+        },
+        {
+          onSuccess: () => {
+            addToast('success', 'Registro guardado correctamente');
+            setFormData({
+              clientName: '',
+              clientId: '',
+              email: '',
+              entryDate: getLocalISODate(),
+              model: '',
+              plate: '',
+              mileage: '' as unknown as number,
+              observations: '',
+            });
+            setErrors({});
+          },
+          onError: () => addToast('error', 'Error al guardar el registro'),
+        },
+      );
     }
   };
 

@@ -1,4 +1,4 @@
-import { MotorcycleEntry } from '../../contexts/WorkshopContext';
+import type { MotorcycleEntry } from '../../types/index';
 import { FileText, X, Printer, CheckCircle } from 'lucide-react';
 
 interface InvoiceModalProps {

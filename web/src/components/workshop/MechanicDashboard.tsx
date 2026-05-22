@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { useWorkshop } from '@hooks/useWorkshop';
+import { useMotorcycles } from '@hooks/useWorkshop';
 import MotorcycleCard from './MotorcycleCard';
 import { ClipboardCheck, Wrench, CheckCircle } from 'lucide-react';
 
 export default function MechanicDashboard() {
-  const { queue } = useWorkshop();
+  const { data: queue = [] } = useMotorcycles();
   const [activeTab, setActiveTab] = useState<'pending' | 'finished'>('pending');
 
   const pendingQueue = queue.filter(q => q.status === 'pending').sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());

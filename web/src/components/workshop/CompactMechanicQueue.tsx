@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useWorkshop } from '@hooks/useWorkshop';
+import { useWorkshop, useMotorcycles, useAddPart, useFinishRepair, useUpdateMotorcycle, useRemovePart } from '@hooks/useWorkshop';
 import { Package, Plus, ArrowLeft, Wrench, CheckCircle, FileText, Trash2 } from 'lucide-react';
 
 interface CompactMechanicQueueProps {
@@ -7,15 +7,12 @@ interface CompactMechanicQueueProps {
 }
 
 export default function CompactMechanicQueue({ isGrid = false }: CompactMechanicQueueProps) {
-  const {
-    queue,
-    activeRepairId,
-    setActiveRepairId,
-    addPartToEntry,
-    finishRepair,
-    updateEntry,
-    removePartFromEntry,
-  } = useWorkshop();
+  const { activeRepairId, setActiveRepairId } = useWorkshop();
+  const { data: queue = [] } = useMotorcycles();
+  const addPartMutation = useAddPart();
+  const finishMutation = useFinishRepair();
+  const updateMutation = useUpdateMotorcycle();
+  const removePartMutation = useRemovePart();
 
   const pendingQueue = queue.filter(q => q.status === 'pending');
   const sortedQueue = [...pendingQueue].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
@@ -42,18 +39,18 @@ export default function CompactMechanicQueue({ isGrid = false }: CompactMechanic
             
             <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
               <div className="p-4 lg:p-6">
-                <CompactMotorcycleCard 
-                  entry={activeRepair} 
-                  onAddPart={(part) => addPartToEntry(activeRepair.id, part)} 
-                  onUpdateNotes={(notes) => updateEntry(activeRepair.id, { mechanicNotes: notes })}
-                  onRemovePart={(partId) => removePartFromEntry(activeRepair.id, partId)}
+                <CompactMotorcycleCard
+                  entry={activeRepair}
+                  onAddPart={(part) => addPartMutation.mutate({ motorcycleId: activeRepair.id, ...part })}
+                  onUpdateNotes={(notes) => updateMutation.mutate({ id: activeRepair.id, mechanic_notes: notes })}
+                  onRemovePart={(partId) => removePartMutation.mutate({ motorcycleId: activeRepair.id, partId })}
                   isActiveView={true}
                 />
               </div>
               
               <div className="px-4 lg:px-6 py-4 bg-gray-50/50 dark:bg-gray-900/50 border-t border-gray-100 dark:border-gray-800 flex justify-end">
                 <button
-                  onClick={() => finishRepair(activeRepair.id)}
+                  onClick={() => finishMutation.mutate(activeRepair.id)}
                   className="flex items-center justify-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white text-base font-bold rounded-xl transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5 min-w-[250px]"
                 >
                   <CheckCircle className="w-5 h-5" />
@@ -85,8 +82,8 @@ export default function CompactMechanicQueue({ isGrid = false }: CompactMechanic
           <CompactMotorcycleCard 
             key={entry.id} 
             entry={entry} 
-            onAddPart={(part) => addPartToEntry(entry.id, part)} 
-            onRemovePart={(partId) => removePartFromEntry(entry.id, partId)}
+            onAddPart={(part) => addPartMutation.mutate({ motorcycleId: entry.id, ...part })}
+            onRemovePart={(partId) => removePartMutation.mutate({ motorcycleId: entry.id, partId })}
             onSelect={() => setActiveRepairId(entry.id)}
             isActiveView={false}
           />
