@@ -78,10 +78,23 @@ pegasusSolucionAuteco/
 └── README.md
 ```
 
-## Roles
+## Roles y Credenciales de Prueba
 
-- **Employee** — Access to chat, history, and personal profile
-- **Admin** — All employee features + view all users' statistics
+El sistema maneja tres roles principales con distintos niveles de acceso:
+
+- **Mecánico** (`mecanico@pegasus.com` / `Meca1234`)
+  - Ve exclusivamente la Cola de Reparación.
+  - Accede a los datos filtrados (Marca/Modelo, Placa, Observaciones).
+  - Tiene acceso al Chat de la IA para consultas técnicas.
+- **Secretario** (`secretario@pegasus.com` / `Secre1234`)
+  - Tiene acceso a la gestión completa del Taller Pegasus.
+  - Puede registrar el ingreso de nuevas motocicletas a la cola de reparación.
+  - Acceso al chat y otras herramientas de gestión.
+- **Admin** (`admin@pegasus.com` / `Admin1234`)
+  - Acceso total a todas las funcionalidades del Secretario y Mecánico.
+  - Visualización del historial completo, perfil y métricas de todos los usuarios.
+
+*(Nota: El registro para mecánicos y secretarios está abierto en `/register`. El rol de Admin se debe asignar manualmente desde la base de datos).*
 
 ## User Flow
 
