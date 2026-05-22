@@ -20,6 +20,7 @@ const Layout = () => {
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
   const isAdmin = user?.role === 'admin';
+  const isMechanic = user?.role === 'mecanico';
 
   const [chatHistoryOpen, setChatHistoryOpen] = useState(false);
   const [mobileTab, setMobileTab] = useState<'chat' | 'inventory' | 'queue'>('chat');
@@ -198,13 +199,15 @@ const Layout = () => {
             <MessageSquare className="w-4 h-4" />
             <span className="hidden sm:inline">Chats</span>
           </button>
-          <button
-            onClick={() => navigate('/workshop')}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium bg-pegasus-blue/10 text-pegasus-blue hover:bg-pegasus-blue/20 transition-colors"
-          >
-            <Wrench className="w-4 h-4" />
-            <span className="hidden sm:inline">Taller Pegasus</span>
-          </button>
+          {!isMechanic && (
+            <button
+              onClick={() => navigate('/workshop')}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium bg-pegasus-blue/10 text-pegasus-blue hover:bg-pegasus-blue/20 transition-colors"
+            >
+              <Wrench className="w-4 h-4" />
+              <span className="hidden sm:inline">Taller Pegasus</span>
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-4 text-sm font-medium">
           <span className="hidden sm:inline text-gray-600 dark:text-gray-300">
@@ -242,17 +245,19 @@ const Layout = () => {
         {/* Right: Inventory / Admin / Queue */}
         <div className="w-[60%] flex flex-col overflow-hidden">
           <div className="flex items-center gap-1 px-4 pt-4 pb-0 shrink-0 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
-            <button
-              onClick={() => setActivePanelDesktop('inventory')}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-t-xl text-sm font-semibold transition-all border-b-2 ${
-                activePanelDesktop === 'inventory'
-                  ? 'border-auteco-red text-auteco-red bg-red-50/50 dark:bg-red-900/10'
-                  : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
-              }`}
-            >
-              <Bike className="w-4 h-4" />
-              Inventario
-            </button>
+            {!isMechanic && (
+              <button
+                onClick={() => setActivePanelDesktop('inventory')}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-t-xl text-sm font-semibold transition-all border-b-2 ${
+                  activePanelDesktop === 'inventory'
+                    ? 'border-auteco-red text-auteco-red bg-red-50/50 dark:bg-red-900/10'
+                    : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+                }`}
+              >
+                <Bike className="w-4 h-4" />
+                Inventario
+              </button>
+            )}
             <button
               onClick={() => setActivePanelDesktop('queue')}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-t-xl text-sm font-semibold transition-all border-b-2 ${
@@ -324,13 +329,15 @@ const Layout = () => {
             <MessageSquare className="w-6 h-6" />
             <span className="text-[10px] uppercase">Chat IA</span>
           </button>
-          <button
-            onClick={() => setMobileTab('inventory')}
-            className={`flex flex-col items-center gap-1 ${mobileTab === 'inventory' ? 'text-auteco-red font-bold' : 'text-gray-400 dark:text-gray-500'}`}
-          >
-            <Bike className="w-6 h-6" />
-            <span className="text-[10px] uppercase">Motos</span>
-          </button>
+          {!isMechanic && (
+            <button
+              onClick={() => setMobileTab('inventory')}
+              className={`flex flex-col items-center gap-1 ${mobileTab === 'inventory' ? 'text-auteco-red font-bold' : 'text-gray-400 dark:text-gray-500'}`}
+            >
+              <Bike className="w-6 h-6" />
+              <span className="text-[10px] uppercase">Motos</span>
+            </button>
+          )}
           <button
             onClick={() => setMobileTab('queue')}
             className={`flex flex-col items-center gap-1 ${mobileTab === 'queue' ? 'text-auteco-red font-bold' : 'text-gray-400 dark:text-gray-500'}`}
@@ -338,13 +345,15 @@ const Layout = () => {
             <Wrench className="w-6 h-6" />
             <span className="text-[10px] uppercase">Cola</span>
           </button>
-          <button
-            onClick={() => navigate('/workshop')}
-            className="flex flex-col items-center gap-1 text-gray-400 dark:text-gray-500"
-          >
-            <Plus className="w-6 h-6" />
-            <span className="text-[10px] uppercase">Nuevo</span>
-          </button>
+          {!isMechanic && (
+            <button
+              onClick={() => navigate('/workshop')}
+              className="flex flex-col items-center gap-1 text-gray-400 dark:text-gray-500"
+            >
+              <Plus className="w-6 h-6" />
+              <span className="text-[10px] uppercase">Nuevo</span>
+            </button>
+          )}
         </div>
       </div>
 

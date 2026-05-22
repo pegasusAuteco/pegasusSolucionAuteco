@@ -1,10 +1,17 @@
+// ─── Tipos de usuario y roles ─────────────────────────────────────────────────
+
+export type UserRole = 'mecanico' | 'secretario' | 'admin'
+
 export interface User {
   id: string
   email: string
   name: string
-  role: 'employee' | 'admin'
+  role: UserRole
+  empresa_taller?: string | null
   created_at: string
 }
+
+// ─── Auth ─────────────────────────────────────────────────────────────────────
 
 export interface AuthResponse {
   access_token: string
@@ -34,6 +41,8 @@ export interface RegisterResponseData {
   created_at: string
 }
 
+// ─── Chat / Mensajes ──────────────────────────────────────────────────────────
+
 export interface Message {
   id: string
   conversation_id: string
@@ -49,6 +58,8 @@ export interface Conversation {
   created_at: string
   updated_at: string
 }
+
+// ─── Analytics ────────────────────────────────────────────────────────────────
 
 export interface UserStats {
   total_conversations: number

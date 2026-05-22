@@ -3,8 +3,9 @@ import { z } from 'zod';
 import { useRegisterMotorcycle, useUpdateMotorcycle } from '@hooks/useWorkshop';
 import type { MotorcycleEntry } from '@hooks/useWorkshop';
 import { useToastStore } from '../../store/toastStore';
-import { ClipboardList, PlusCircle, Save, X } from 'lucide-react';
+import { ClipboardList, PlusCircle, Save, X, Loader2 } from 'lucide-react';
 import { getLocalISODate } from '../../utils/dates';
+import { workshopService } from '../../services/workshopService';
 
 const receptionSchema = z.object({
   clientName: z.string().min(1, 'El nombre del cliente es requerido'),
@@ -12,7 +13,9 @@ const receptionSchema = z.object({
   email: z.string().email('Formato de correo inválido').or(z.literal('')).optional(),
   entryDate: z.string().min(1, 'La fecha es requerida'),
   model: z.string().min(1, 'La marca/modelo es requerida'),
-  plate: z.string().min(1, 'La placa es requerida'),
+  plate: z.string()
+    .min(1, 'La placa es requerida')
+    .regex(/^[A-Za-z]{3}-?[0-9]{2}[A-Za-z]{1}$/, 'Formato inválido (Ej: ABC12D o ABC-12D)'),
   mileage: z.number({ invalid_type_error: 'El kilometraje es requerido' }).min(0, 'Debe ser un valor positivo'),
   observations: z.string().min(1, 'Las observaciones son requeridas').max(500, 'Máximo 500 caracteres'),
 });
@@ -52,9 +55,11 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }: Rece
     observations: initialData?.observations ?? '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const registerMutation = useRegisterMotorcycle();
   const updateMutation = useUpdateMotorcycle();
+  const { registerEntry, updateEntry, queue } = useWorkshop();
   const addToast = useToastStore((state) => state.addToast);
 
   const handleChange = (
@@ -68,7 +73,7 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }: Rece
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const result = receptionSchema.safeParse(formData);
@@ -83,6 +88,20 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }: Rece
     }
 
     const data = result.data;
+    const normalizedPlate = data.plate.toUpperCase().replace('-', '');
+    setIsSubmitting(true);
+
+    // Duplicate plate check for new entries
+    if (!initialData) {
+      const isDuplicate = queue.some(
+        (entry) => entry.plate.replace('-', '') === normalizedPlate && entry.status === 'pending'
+      );
+      if (isDuplicate) {
+        setErrors({ plate: 'Esta placa ya se encuentra en la cola de reparación' });
+        setIsSubmitting(false);
+        return;
+      }
+    }
 
     if (initialData) {
       updateMutation.mutate(
@@ -133,6 +152,66 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }: Rece
           onError: () => addToast('error', 'Error al guardar el registro'),
         },
       );
+      try {
+        updateEntry(initialData.id, {
+          clientName: data.clientName,
+          clientId: data.clientId,
+          email: data.email || '',
+          model: data.model,
+          plate: normalizedPlate,
+          mileage: data.mileage,
+          entryDate: data.entryDate,
+          observations: data.observations,
+        });
+        addToast('success', 'Registro actualizado correctamente');
+        if (onSuccess) onSuccess();
+      } finally {
+        setIsSubmitting(false);
+      }
+    } else {
+      try {
+        // 1. Guardar en Supabase (fuente de la verdad)
+        await workshopService.createIngreso({
+          cliente: data.clientName,
+          documento_identidad: data.clientId,
+          correo_electronico: data.email || undefined,
+          fecha_ingreso: data.entryDate,
+          marca_modelo: data.model,
+          placa: normalizedPlate,
+          kilometraje: data.mileage,
+          observaciones: data.observations,
+        });
+
+        // 2. Actualizar estado local para la cola del mecánico
+        registerEntry({
+          clientName: data.clientName,
+          clientId: data.clientId,
+          email: data.email || '',
+          model: data.model,
+          plate: normalizedPlate,
+          mileage: data.mileage,
+          entryDate: data.entryDate,
+          observations: data.observations,
+        });
+
+        addToast('success', '✅ Moto registrada y guardada en Supabase');
+        setFormData({
+          clientName: '',
+          clientId: '',
+          email: '',
+          entryDate: getLocalISODate(),
+          model: '',
+          plate: '',
+          mileage: '' as unknown as number,
+          observations: '',
+        });
+        setErrors({});
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Error desconocido';
+        addToast('error', `❌ Error al guardar en Supabase: ${msg}`);
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -233,6 +312,7 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }: Rece
               onChange={handleChange}
               placeholder="Ej: ABC12D"
               className={`${inputClass('plate')} uppercase`}
+              maxLength={7}
             />
             {errors.plate && <p className="text-xs text-red-500">{errors.plate}</p>}
           </div>
@@ -292,10 +372,14 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }: Rece
         ) : (
           <button
             type="submit"
-            className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-auteco-red hover:bg-red-700 text-white font-bold text-lg rounded-xl shadow-lg transition-all active:scale-[0.98] hover:shadow-xl"
+            disabled={isSubmitting}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-auteco-red hover:bg-red-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold text-lg rounded-xl shadow-lg transition-all active:scale-[0.98] hover:shadow-xl"
           >
-            <PlusCircle className="w-6 h-6" />
-            Registrar Ingreso
+            {isSubmitting ? (
+              <><Loader2 className="w-6 h-6 animate-spin" /> Guardando...</>
+            ) : (
+              <><PlusCircle className="w-6 h-6" /> Registrar Ingreso</>
+            )}
           </button>
         )}
       </form>

@@ -78,10 +78,33 @@ pegasusSolucionAuteco/
 └── README.md
 ```
 
-## Roles
+## Roles and Test Credentials
 
-- **Employee** — Access to chat, history, and personal profile
-- **Admin** — All employee features + view all users' statistics
+The system manages three main roles with different access levels:
+
+### **Mechanic** (`mecanico@pegasus.com` / `Meca1234`)
+
+- Viewes only the Repair Queue.
+
+- Accesses filtered data (Make/Model, License Plate, Notes).
+
+- Has access to the AI ​​Chat for technical inquiries.
+
+### **Secretary** (`secretario@pegasus.com` / `Secre1234`)
+
+- Has access to the complete management of the Pegasus Workshop.
+
+- Can register the entry of new motorcycles into the repair queue.
+
+- Access to the chat and other management tools.
+
+### **Admin** (`admin@pegasus.com` / `Admin1234`)
+
+- Full access to all Secretary and Mechanic functionalities.
+
+- Views the complete history, profile, and metrics of all users.
+
+
 
 ## User Flow
 
