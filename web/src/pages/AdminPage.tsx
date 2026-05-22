@@ -1,17 +1,37 @@
 import { useState, useRef } from 'react'
 
-import { Users, MessageSquare, Activity, FilePlus2, Upload, X, Construction, Zap } from 'lucide-react'
-import { useQuery } from '@tanstack/react-query'
+import { Users, MessageSquare, Activity, FilePlus2, Upload, X, Construction, Zap, UserCog } from 'lucide-react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { analyticsService } from '@services/api'
+import { supabaseAuthService, UserRole } from '@services/supabaseAuthService'
 
 export default function AdminPage() {
   const [uploadedManuals, setUploadedManuals] = useState<any[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const { data: stats, isLoading } = useQuery({
+  const { data: stats, isLoading: isLoadingStats } = useQuery({
     queryKey: ['adminStats'],
     queryFn: analyticsService.adminStats,
   })
+
+  // Queries for User Management
+  const queryClient = useQueryClient()
+  const { data: users, isLoading: isLoadingUsers } = useQuery({
+    queryKey: ['allUsers'],
+    queryFn: supabaseAuthService.getAllUsers,
+  })
+
+  const updateRoleMutation = useMutation({
+    mutationFn: ({ userId, newRole }: { userId: number; newRole: UserRole }) =>
+      supabaseAuthService.updateUserRole(userId, newRole),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['allUsers'] })
+    },
+  })
+
+  const handleRoleChange = (userId: number, newRole: UserRole) => {
+    updateRoleMutation.mutate({ userId, newRole })
+  }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -56,7 +76,7 @@ export default function AdminPage() {
     }
   ]
 
-  if (isLoading) return <div className="p-4 text-gray-500">Cargando métricas...</div>
+  if (isLoadingStats || isLoadingUsers) return <div className="p-4 text-gray-500">Cargando datos de administración...</div>
 
   return (
     <div className="mx-auto max-w-4xl p-4 sm:p-6 w-full pb-24">
@@ -178,6 +198,57 @@ export default function AdminPage() {
               No hay manuales cargados aún.
             </p>
           )}
+        </div>
+      </div>
+
+      {/* User Management Section */}
+      <div className="animate-fade-in-up bg-white dark:bg-gray-900/60 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-sm mt-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-bold text-gray-700 dark:text-gray-200 flex items-center gap-2">
+            <UserCog className="w-5 h-5 text-auteco-red" />
+            Gestión de Usuarios y Roles
+          </h3>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm text-gray-600 dark:text-gray-400">
+            <thead className="bg-gray-50 dark:bg-gray-800 text-xs uppercase font-semibold text-gray-500 dark:text-gray-400">
+              <tr>
+                <th className="px-4 py-3 rounded-l-xl">Nombre</th>
+                <th className="px-4 py-3">Email</th>
+                <th className="px-4 py-3">Taller</th>
+                <th className="px-4 py-3 rounded-r-xl">Rol</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users?.map((u) => (
+                <tr key={u.id} className="border-b border-gray-100 dark:border-gray-800 last:border-0 hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
+                  <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">{u.nombre}</td>
+                  <td className="px-4 py-3">{u.email}</td>
+                  <td className="px-4 py-3">{u.empresa_taller || '-'}</td>
+                  <td className="px-4 py-3">
+                    <select
+                      value={u.rol}
+                      onChange={(e) => handleRoleChange(u.id, e.target.value as UserRole)}
+                      disabled={updateRoleMutation.isPending}
+                      className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 text-sm rounded-lg focus:ring-auteco-red focus:border-auteco-red block w-full p-2 outline-none disabled:opacity-50"
+                    >
+                      <option value="mecanico">Mecánico</option>
+                      <option value="secretario">Secretario</option>
+                      <option value="admin">Administrador</option>
+                    </select>
+                  </td>
+                </tr>
+              ))}
+              {(!users || users.length === 0) && (
+                <tr>
+                  <td colSpan={4} className="text-center py-6 text-gray-500">
+                    No se encontraron usuarios.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

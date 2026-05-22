@@ -12,7 +12,9 @@ const receptionSchema = z.object({
   email: z.string().email('Formato de correo inválido').or(z.literal('')).optional(),
   entryDate: z.string().min(1, 'La fecha es requerida'),
   model: z.string().min(1, 'La marca/modelo es requerida'),
-  plate: z.string().min(1, 'La placa es requerida'),
+  plate: z.string()
+    .min(1, 'La placa es requerida')
+    .regex(/^[A-Za-z]{3}-?[0-9]{2}[A-Za-z]{1}$/, 'Formato inválido (Ej: ABC12D o ABC-12D)'),
   mileage: z.number({ invalid_type_error: 'El kilometraje es requerido' }).min(0, 'Debe ser un valor positivo'),
   observations: z.string().min(1, 'Las observaciones son requeridas').max(500, 'Máximo 500 caracteres'),
 });
@@ -54,7 +56,7 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }: Rece
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { registerEntry, updateEntry } = useWorkshop();
+  const { registerEntry, updateEntry, queue } = useWorkshop();
   const addToast = useToastStore((state) => state.addToast);
 
   const handleChange = (
@@ -83,7 +85,20 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }: Rece
     }
 
     const data = result.data;
+    const normalizedPlate = data.plate.toUpperCase().replace('-', '');
     setIsSubmitting(true);
+
+    // Duplicate plate check for new entries
+    if (!initialData) {
+      const isDuplicate = queue.some(
+        (entry) => entry.plate.replace('-', '') === normalizedPlate && entry.status === 'pending'
+      );
+      if (isDuplicate) {
+        setErrors({ plate: 'Esta placa ya se encuentra en la cola de reparación' });
+        setIsSubmitting(false);
+        return;
+      }
+    }
 
     if (initialData) {
       try {
@@ -92,7 +107,7 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }: Rece
           clientId: data.clientId,
           email: data.email || '',
           model: data.model,
-          plate: data.plate.toUpperCase(),
+          plate: normalizedPlate,
           mileage: data.mileage,
           entryDate: data.entryDate,
           observations: data.observations,
@@ -111,7 +126,7 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }: Rece
           correo_electronico: data.email || undefined,
           fecha_ingreso: data.entryDate,
           marca_modelo: data.model,
-          placa: data.plate.toUpperCase(),
+          placa: normalizedPlate,
           kilometraje: data.mileage,
           observaciones: data.observations,
         });
@@ -122,7 +137,7 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }: Rece
           clientId: data.clientId,
           email: data.email || '',
           model: data.model,
-          plate: data.plate.toUpperCase(),
+          plate: normalizedPlate,
           mileage: data.mileage,
           entryDate: data.entryDate,
           observations: data.observations,
@@ -246,6 +261,7 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }: Rece
               onChange={handleChange}
               placeholder="Ej: ABC12D"
               className={`${inputClass('plate')} uppercase`}
+              maxLength={7}
             />
             {errors.plate && <p className="text-xs text-red-500">{errors.plate}</p>}
           </div>

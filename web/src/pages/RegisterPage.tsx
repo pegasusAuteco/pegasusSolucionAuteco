@@ -1,10 +1,9 @@
 import { useState } from 'react'
 import { z } from 'zod'
-import { User, Mail, Lock, Building2, AlertCircle, Wrench, ClipboardList, ShieldCheck } from 'lucide-react'
+import { User, Mail, Lock, Building2, AlertCircle, ShieldCheck } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useRegister } from '@hooks/useAuth'
 import { useToastStore } from '@store/toastStore'
-import type { UserRole } from '@types'
 
 const registerSchema = z
   .object({
@@ -18,9 +17,6 @@ const registerSchema = z
       .regex(/[a-z]/, 'Debe contener al menos una minúscula')
       .regex(/\d/, 'Debe contener al menos un número'),
     confirmPassword: z.string().min(1, 'Debes confirmar la contraseña'),
-    rol: z.enum(['mecanico', 'secretario'] as const, {
-      errorMap: () => ({ message: 'Selecciona un rol válido' }),
-    }),
     empresa_taller: z.string().optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -29,20 +25,7 @@ const registerSchema = z
   })
 
 
-const ROLE_OPTIONS: { value: UserRole; label: string; icon: React.ReactNode; description: string }[] = [
-  {
-    value: 'mecanico',
-    label: 'Mecánico',
-    icon: <Wrench className="w-5 h-5" />,
-    description: 'Accede a la cola de reparaciones',
-  },
-  {
-    value: 'secretario',
-    label: 'Secretario',
-    icon: <ClipboardList className="w-5 h-5" />,
-    description: 'Gestiona el ingreso de motos',
-  },
-]
+
 
 export default function RegisterPage() {
   const navigate = useNavigate()
@@ -54,7 +37,6 @@ export default function RegisterPage() {
     email: '',
     password: '',
     confirmPassword: '',
-    rol: '' as UserRole | '',
     empresa_taller: '',
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -65,10 +47,7 @@ export default function RegisterPage() {
     if (errors[e.target.name]) setErrors({ ...errors, [e.target.name]: '' })
   }
 
-  const selectRole = (role: UserRole) => {
-    setFormData({ ...formData, rol: role })
-    if (errors.rol) setErrors({ ...errors, rol: '' })
-  }
+
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -90,7 +69,7 @@ export default function RegisterPage() {
         nombre: result.data.nombre,
         email: result.data.email,
         password: result.data.password,
-        rol: result.data.rol,
+        rol: 'mecanico',
         empresa_taller: result.data.empresa_taller || undefined,
       })
     } catch (err: any) {
@@ -131,31 +110,7 @@ export default function RegisterPage() {
             </div>
           )}
 
-          {/* Selector de rol */}
-          <div className="space-y-2">
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">
-              Rol en el taller
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              {ROLE_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => selectRole(opt.value)}
-                  className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all text-center ${
-                    formData.rol === opt.value
-                      ? 'border-auteco-red bg-red-50 dark:bg-red-900/20 text-auteco-red'
-                      : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500'
-                  }`}
-                >
-                  {opt.icon}
-                  <span className="font-bold text-sm">{opt.label}</span>
-                  <span className="text-xs leading-tight">{opt.description}</span>
-                </button>
-              ))}
-            </div>
-            {errors.rol && <p className="text-red-500 text-xs mt-1">{errors.rol}</p>}
-          </div>
+
 
           <div className="space-y-4">
             {/* Nombre */}

@@ -82,4 +82,29 @@ export const supabaseAuthService = {
 
     return data as SupabaseUser
   },
+
+  /**
+   * Obtiene la lista de todos los usuarios (requerido para Admin Panel)
+   */
+  getAllUsers: async (): Promise<SupabaseUser[]> => {
+    const { data, error } = await supabase
+      .from('usuarios')
+      .select('id, nombre, email, rol, empresa_taller, created_at')
+      .order('created_at', { ascending: false })
+
+    if (error) throw new Error(error.message)
+    return data as SupabaseUser[]
+  },
+
+  /**
+   * Actualiza el rol de un usuario existente (requerido para Admin Panel)
+   */
+  updateUserRole: async (userId: number, newRole: UserRole): Promise<void> => {
+    const { error } = await supabase
+      .from('usuarios')
+      .update({ rol: newRole })
+      .eq('id', userId)
+
+    if (error) throw new Error(error.message)
+  },
 }
