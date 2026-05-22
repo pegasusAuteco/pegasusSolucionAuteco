@@ -5,33 +5,52 @@ import ProtectedRoute from '@components/auth/ProtectedRoute'
 import ToastViewport from '@components/shared/ToastViewport'
 import { ChatProvider } from './contexts/ChatContext'
 import { WorkshopProvider } from './contexts/WorkshopContext'
+import { useAuthStore } from '@store/authStore'
 
-const LoginPage = lazy(() => import('@pages/LoginPage'))
+const LoginPage    = lazy(() => import('@pages/LoginPage'))
 const RegisterPage = lazy(() => import('@pages/RegisterPage'))
-const HistoryPage = lazy(() => import('@pages/HistoryPage'))
-const ProfilePage = lazy(() => import('@pages/ProfilePage'))
+const HistoryPage  = lazy(() => import('@pages/HistoryPage'))
+const ProfilePage  = lazy(() => import('@pages/ProfilePage'))
 const WorkshopPage = lazy(() => import('@pages/WorkshopPage'))
+
+/** Redirige al home correcto según el rol del usuario autenticado */
+function RoleRedirect() {
+  const user = useAuthStore((s) => s.user)
+  if (!user) return <Navigate to="/login" replace />
+  if (user.role === 'mecanico' || user.role === 'admin') return <Navigate to="/chat" replace />
+  return <Navigate to="/workshop" replace />
+}
+
+const Loader = (
+  <div className="flex min-h-screen items-center justify-center text-gray-500">Cargando...</div>
+)
 
 export default function App() {
   return (
     <BrowserRouter>
       <ToastViewport />
-      <Suspense fallback={
-        <div className="flex min-h-screen items-center justify-center text-gray-500">Cargando...</div>
-      }>
+      <Suspense fallback={Loader}>
         <WorkshopProvider>
           <ChatProvider>
             <Routes>
-              <Route path="/login" element={<LoginPage />} />
+              {/* Públicas */}
+              <Route path="/login"    element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+
+              {/* Secretario + Admin: Taller Pegasus completo */}
+              <Route element={<ProtectedRoute allowedRoles={['secretario', 'admin']} redirectTo="/chat" />}>
+                <Route path="/workshop" element={<WorkshopPage />} />
+              </Route>
+
+              {/* Admin + cualquier autenticado: Chat / Historial / Perfil */}
               <Route element={<ProtectedRoute />}>
-                <Route path="/chat" element={<Layout />} />
+                <Route path="/chat"    element={<Layout />} />
                 <Route path="/history" element={<HistoryPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
-                <Route path="/workshop" element={<WorkshopPage />} />
-                <Route path="/admin" element={<Navigate to="/chat" replace />} />
               </Route>
-              <Route path="*" element={<Navigate to="/chat" replace />} />
+
+              {/* Wildcard: redirige al home del rol */}
+              <Route path="*" element={<RoleRedirect />} />
             </Routes>
           </ChatProvider>
         </WorkshopProvider>

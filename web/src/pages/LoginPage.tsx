@@ -25,7 +25,11 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [retryPayload, setRetryPayload] = useState<LoginForm | null>(null)
 
-  if (isAuthenticated) return <Navigate to="/chat" replace />
+  if (isAuthenticated) {
+    const role = useAuthStore.getState().user?.role
+    const dest = (role === 'mecanico' || role === 'admin') ? '/chat' : '/workshop'
+    return <Navigate to={dest} replace />
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })

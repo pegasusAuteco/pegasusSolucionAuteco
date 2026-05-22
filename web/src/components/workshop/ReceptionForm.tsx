@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { z } from 'zod';
 import { useWorkshop, MotorcycleEntry } from '@hooks/useWorkshop';
 import { useToastStore } from '../../store/toastStore';
-import { ClipboardList, PlusCircle, Save, X } from 'lucide-react';
+import { ClipboardList, PlusCircle, Save, X, Loader2 } from 'lucide-react';
 import { getLocalISODate } from '../../utils/dates';
+import { workshopService } from '../../services/workshopService';
 
 const receptionSchema = z.object({
   clientName: z.string().min(1, 'El nombre del cliente es requerido'),
@@ -51,6 +52,7 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }: Rece
     observations: initialData?.observations ?? '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { registerEntry, updateEntry } = useWorkshop();
   const addToast = useToastStore((state) => state.addToast);
@@ -66,7 +68,7 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }: Rece
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const result = receptionSchema.safeParse(formData);
@@ -81,43 +83,69 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }: Rece
     }
 
     const data = result.data;
+    setIsSubmitting(true);
 
     if (initialData) {
-      updateEntry(initialData.id, {
-        clientName: data.clientName,
-        clientId: data.clientId,
-        email: data.email || '',
-        model: data.model,
-        plate: data.plate.toUpperCase(),
-        mileage: data.mileage,
-        entryDate: data.entryDate,
-        observations: data.observations,
-      });
-      addToast('success', 'Registro actualizado correctamente');
-      if (onSuccess) onSuccess();
+      try {
+        updateEntry(initialData.id, {
+          clientName: data.clientName,
+          clientId: data.clientId,
+          email: data.email || '',
+          model: data.model,
+          plate: data.plate.toUpperCase(),
+          mileage: data.mileage,
+          entryDate: data.entryDate,
+          observations: data.observations,
+        });
+        addToast('success', 'Registro actualizado correctamente');
+        if (onSuccess) onSuccess();
+      } finally {
+        setIsSubmitting(false);
+      }
     } else {
-      registerEntry({
-        clientName: data.clientName,
-        clientId: data.clientId,
-        email: data.email || '',
-        model: data.model,
-        plate: data.plate.toUpperCase(),
-        mileage: data.mileage,
-        entryDate: data.entryDate,
-        observations: data.observations,
-      });
-      addToast('success', 'Registro guardado correctamente');
-      setFormData({
-        clientName: '',
-        clientId: '',
-        email: '',
-        entryDate: getLocalISODate(),
-        model: '',
-        plate: '',
-        mileage: '' as unknown as number,
-        observations: '',
-      });
-      setErrors({});
+      try {
+        // 1. Guardar en Supabase (fuente de la verdad)
+        await workshopService.createIngreso({
+          cliente: data.clientName,
+          documento_identidad: data.clientId,
+          correo_electronico: data.email || undefined,
+          fecha_ingreso: data.entryDate,
+          marca_modelo: data.model,
+          placa: data.plate.toUpperCase(),
+          kilometraje: data.mileage,
+          observaciones: data.observations,
+        });
+
+        // 2. Actualizar estado local para la cola del mecánico
+        registerEntry({
+          clientName: data.clientName,
+          clientId: data.clientId,
+          email: data.email || '',
+          model: data.model,
+          plate: data.plate.toUpperCase(),
+          mileage: data.mileage,
+          entryDate: data.entryDate,
+          observations: data.observations,
+        });
+
+        addToast('success', '✅ Moto registrada y guardada en Supabase');
+        setFormData({
+          clientName: '',
+          clientId: '',
+          email: '',
+          entryDate: getLocalISODate(),
+          model: '',
+          plate: '',
+          mileage: '' as unknown as number,
+          observations: '',
+        });
+        setErrors({});
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Error desconocido';
+        addToast('error', `❌ Error al guardar en Supabase: ${msg}`);
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -277,10 +305,14 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }: Rece
         ) : (
           <button
             type="submit"
-            className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-auteco-red hover:bg-red-700 text-white font-bold text-lg rounded-xl shadow-lg transition-all active:scale-[0.98] hover:shadow-xl"
+            disabled={isSubmitting}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-auteco-red hover:bg-red-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold text-lg rounded-xl shadow-lg transition-all active:scale-[0.98] hover:shadow-xl"
           >
-            <PlusCircle className="w-6 h-6" />
-            Registrar Ingreso
+            {isSubmitting ? (
+              <><Loader2 className="w-6 h-6 animate-spin" /> Guardando...</>
+            ) : (
+              <><PlusCircle className="w-6 h-6" /> Registrar Ingreso</>
+            )}
           </button>
         )}
       </form>
