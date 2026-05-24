@@ -125,31 +125,42 @@ _DIAGNOSTIC_KEYWORDS = {
     "diagnostico", "diagnóstico", "síntoma", "sintoma", "chequear",
 }
 
+_GREETING_KEYWORDS = {
+    "hola", "buenos días", "buenas tardes", "buenas noches", "buen día",
+    "buenas", "hey", "qué tal", "que tal", "cómo estás", "como estas",
+    "cómo te va", "como te va", "saludos", "bienvenido", "gracias", "ok",
+    "okay", "entendido", "perfecto", "listo", "de acuerdo",
+}
+
 def _is_diagnostic_query(query: str) -> bool:
     q = query.lower()
     return any(kw in q for kw in _DIAGNOSTIC_KEYWORDS)
+
+def _is_trivial_query(query: str) -> bool:
+    q = query.lower().strip()
+    if len(q.split()) <= 3:
+        return any(kw in q for kw in _GREETING_KEYWORDS)
+    return False
 
 
 def retrieve_context(query: str, top_k: int = 5) -> list[str]:
     """
     Pipeline de recuperación RAG:
-    1. Genera embedding de la pregunta del usuario
+    1. Si es saludo o mensaje trivial: no busca contexto
     2. Si es consulta de falla/diagnóstico: busca en fallas_diagnostico
     3. Busca en manuales_chunks (información técnica general)
-    4. Formatea y combina resultados
     """
-    embedding = embed_query(query)
+    if _is_trivial_query(query):
+        return []
 
+    embedding = embed_query(query)
     context_texts = []
 
-    # Solo buscar en fallas si la consulta tiene indicadores de diagnóstico
     if _is_diagnostic_query(query):
         fallas = search_similar_fallas(embedding, top_k=2)
         for f in fallas:
-            formatted = _format_falla(f)
-            context_texts.append(formatted)
+            context_texts.append(_format_falla(f))
 
-    # Siempre buscar en manuales
     chunks = search_similar_chunks(embedding, top_k=top_k)
     for chunk in chunks:
         formatted = _format_chunk(chunk)
