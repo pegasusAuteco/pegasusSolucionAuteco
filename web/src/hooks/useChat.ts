@@ -100,8 +100,5 @@ export function useSendMessage() {
         queryClient.setQueryData(['messages', variables.conversationId], context.previousMessages);
       }
     },
-    onSettled: (_data, _err, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['messages', variables.conversationId] });
-    },
   });
 }

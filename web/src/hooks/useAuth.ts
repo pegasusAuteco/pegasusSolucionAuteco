@@ -2,28 +2,16 @@ import { useMutation } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@store/authStore'
 import { useToastStore } from '@store/toastStore'
+import { authService } from '@services/api'
 import { supabaseAuthService, type UserRole } from '@services/supabaseAuthService'
-import type { User } from '@types'
 
 // ─── Destino de redirección por rol ──────────────────────────────────────────
-function roleRedirect(role: UserRole): string {
+function roleRedirect(role: string): string {
   switch (role) {
     case 'mecanico':   return '/chat'
     case 'secretario': return '/workshop'
     case 'admin':      return '/chat'
     default:           return '/workshop'
-  }
-}
-
-// ─── Mapea SupabaseUser → User (tipo interno) ─────────────────────────────────
-function mapToUser(su: Awaited<ReturnType<typeof supabaseAuthService.login>>): User {
-  return {
-    id: String(su.id),
-    email: su.email,
-    name: su.nombre,
-    role: su.rol,
-    empresa_taller: su.empresa_taller,
-    created_at: su.created_at,
   }
 }
 
@@ -36,12 +24,9 @@ export function useLogin() {
 
   return useMutation({
     mutationFn: ({ email, password }: { email: string; password: string }) =>
-      supabaseAuthService.login(email, password),
-    onSuccess: (supabaseUser) => {
-      const user = mapToUser(supabaseUser)
-      // Usamos un token UUID como marcador de sesión (no es JWT)
-      const sessionToken = crypto.randomUUID()
-      setAuth(user, sessionToken)
+      authService.login({ email, password }),
+    onSuccess: ({ user, access_token }) => {
+      setAuth(user, access_token)
       addToast('success', `Bienvenido, ${user.name} 👋`)
       navigate(roleRedirect(user.role))
     },

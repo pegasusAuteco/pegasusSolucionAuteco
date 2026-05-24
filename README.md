@@ -1,167 +1,101 @@
-# MotorConnect
+# Pegasus — Asistente RAG para Talleres de Motos
 
-Web app (mobile-first responsive) for motorcycle repair shops. Employees can consult a RAG assistant for information about repairs, technical service, and fault diagnosis for motorcycles.
+Web app mobile-first para talleres de motos Auteco. Los empleados consultan un asistente RAG para información técnica, manuales y diagnóstico de fallas.
 
-## New Tech Stack
+## Stack
 
-| Layer | Technology |
-|-------|-----------|
-| **Frontend** | React 18 + TypeScript + Tailwind CSS |
-| **Build Tool** | Vite |
-| **Components** | Lucide React + Custom components |
-| **State Management** | Zustand + TanStack Query |
-| **Backend** | FastAPI (Python) |
-| **Database** | PostgreSQL (usuarios) + Supabase pgvector (RAG) |
-| **Session Cache** | Redis |
-| **Logs** | MongoDB |
-| **Vector Store** | Supabase pgvector |
-| **LLM** | OpenAI gpt-4o-mini + text-embedding-3-small |
+| Capa | Tecnología | Proveedor |
+|------|-----------|-----------|
+| Frontend | React 18 + TypeScript + Tailwind CSS | — |
+| Build | Vite | — |
+| Estado | Zustand + TanStack Query | — |
+| Backend | FastAPI (Python 3.11) | — |
+| Base de datos | PostgreSQL | Supabase (nube) |
+| Vector Store | pgvector | Supabase (nube) |
+| Logs de conversación | MongoDB | Atlas (nube) |
+| Sesiones activas | Redis | Upstash (nube) |
+| LLM + Embeddings | GPT-4o-mini + text-embedding-3-small | OpenAI |
 
-## Features
+## Funcionalidades
 
--  **Responsive Design** — Mobile-first, works on phones, tablets, desktop
--  **Chat RAG** — Ask questions about motorcycle repairs and diagnostics
--  **Conversation History** — Keep track of past conversations
--  **User Profile** — View usage statistics
--  **Admin Dashboard** — View all users' statistics
--  **JWT Authentication** — Secure employee & admin roles
+- Chat RAG — consultas sobre reparaciones, fichas técnicas y diagnóstico de fallas
+- Historial de conversaciones por usuario
+- Perfil con estadísticas de uso
+- Panel de administración con métricas de todos los usuarios
+- Autenticación JWT con roles (mecánico, secretario, admin)
 
-## Auth Policy
-
-- Password policy: 8-12 characters
-- Must include at least one uppercase letter, one lowercase letter, and one number
-
-## Project Structure
+## Estructura del Proyecto
 
 ```
 pegasusSolucionAuteco/
-├── web/                        # Frontend React + Vite + TypeScript
+├── web/                        # Frontend React + Vite
 │   ├── src/
-│   │   ├── pages/              # Rutas: login, chat, history, profile, admin
-│   │   ├── components/         # Componentes reutilizables
-│   │   │   ├── auth/
-│   │   │   ├── chat/
-│   │   │   ├── layout/
-│   │   │   └── workshop/
-│   │   ├── store/              # Zustand: authStore, chatStore, workshopStore
-│   │   ├── services/           # Axios + interceptores JWT
+│   │   ├── pages/              # login, chat, history, profile, admin
+│   │   ├── components/         # auth, chat, layout, workshop
+│   │   ├── hooks/              # useChat, useAuth, useChatUI
+│   │   ├── store/              # Zustand: authStore, chatStore
+│   │   ├── services/           # API client con JWT
 │   │   └── types/
 │   ├── nginx.conf
 │   └── Dockerfile
-├── backend/                    # FastAPI (Python)
-│   ├── auth/                   # JWT, roles, registro
-│   ├── chat/                   # Endpoints de conversación + RAG
+├── backend/                    # FastAPI
+│   ├── auth/                   # JWT, roles, login, registro
+│   ├── chat/                   # Conversaciones + pipeline RAG
 │   ├── rag/
 │   │   ├── retrieval/          # Búsqueda semántica en Supabase
-│   │   └── generation/         # Prompt + llamada al LLM
+│   │   └── generation/         # Prompt + LLM
 │   ├── logs/                   # Redis (hot) → MongoDB (cold)
-│   ├── vector_store/           # Cliente Supabase pgvector
-│   ├── database.py             # SQLAlchemy async engine
-│   ├── config.py               # pydantic-settings
-│   ├── main.py                 # FastAPI app entry point
-│   ├── create_admin.py         # Script one-time: crear primer admin
-│   ├── requirements.txt
-│   └── Dockerfile
-├── scripts/                    # Utilidades de setup y operaciones (one-time)
+│   ├── config.py               # Variables de entorno
+│   ├── main.py                 # Entry point FastAPI
+│   ├── create_admin.py         # Crea el primer usuario admin
+│   └── requirements.txt
+├── scripts/
 │   ├── ingestion/
-│   │   └── ingestaManuales.py  # Carga PDFs de motos/ → Supabase manuales_chunks
+│   │   └── ingestaManuales.py  # Carga PDFs → Supabase manuales_chunks
 │   └── db/
-│       └── apply_schema.py     # Crea tablas en Supabase vía conexión directa
-├── supabase/                   # Infraestructura de base de datos
-│   └── schema_usuarios.sql     # DDL: tabla usuarios, enum roles, trigger updated_at
-├── knowledge_base/             # fallas_comunes.json (base de diagnósticos)
-├── motos/                      # PDFs de manuales técnicos de motos Auteco
-├── documents/                  # Documentación interna del proyecto
+│       └── apply_schema.py     # Aplica schema SQL en Supabase
+├── supabase/
+│   └── schema_usuarios.sql     # DDL: tabla usuarios, roles, triggers
+├── knowledge_base/             # fallas_comunes.json
+├── motos/                      # PDFs de manuales técnicos Auteco
 ├── docker-compose.yaml
-├── .env
 ├── .env.example
-└── README.md
+└── SETUP.md                    # Guia de instalacion paso a paso
 ```
 
-## Roles and Test Credentials
+## Roles
 
-The system manages three main roles with different access levels:
+| Rol | Acceso |
+|-----|--------|
+| Mecánico | Cola de reparaciones + chat RAG |
+| Secretario | Gestión completa del taller + chat |
+| Admin | Todo lo anterior + métricas de todos los usuarios |
 
-### **Mechanic** (`mecanico@pegasus.com` / `Meca1234`)
+## Arrancar el proyecto
 
-- Viewes only the Repair Queue.
-
-- Accesses filtered data (Make/Model, License Plate, Notes).
-
-- Has access to the AI ​​Chat for technical inquiries.
-
-### **Secretary** (`secretario@pegasus.com` / `Secre1234`)
-
-- Has access to the complete management of the Pegasus Workshop.
-
-- Can register the entry of new motorcycles into the repair queue.
-
-- Access to the chat and other management tools.
-
-### **Admin** (`admin@pegasus.com` / `Admin1234`)
-
-- Full access to all Secretary and Mechanic functionalities.
-
-- Views the complete history, profile, and metrics of all users.
-
-
-
-## User Flow
-
-1. Employee opens web app → sees **login** screen
-2. Signs in → redirected to **chat** screen
-3. Starts **new chat** for each motorcycle repair case
-4. Asks RAG agent about the problem (with context)
-5. Checks **conversation history** to review past chats
-6. Views **profile** to see their usage stats (admin sees all users)
-
-## Quick Start
-
-### Prerequisites
-- Docker & Docker Compose
-- Node.js 18+ (for local dev)
-- Python 3.11+ (for backend dev)
-
-### Run with Docker
+Ver [SETUP.md](./SETUP.md) para instrucciones completas con y sin Docker.
 
 ```bash
-# 1. Copy environment variables
-cp .env.example .env
-
-# 2. Build and start services
-docker-compose up -d
-
-# 3. Access the app
-# Frontend:    http://localhost:5173
-# Backend API: http://localhost:8001
-# Swagger:     http://localhost:8001/docs
-# Database:    localhost:5433
+# Resumen rapido con Docker
+docker compose up -d --build
 ```
 
-## Scripts de setup (one-time)
+- Frontend: http://localhost:5173
+- API docs: http://localhost:8001/docs
+
+## Scripts de setup (solo una vez)
 
 ```bash
-# 1. Crear tablas en Supabase (requiere SUPABASE_DB_PASSWORD en .env)
-python scripts/db/apply_schema.py
-
-# 2. Crear primer usuario admin (requiere Docker con la BD corriendo)
+# Crear primer usuario admin (con Docker corriendo)
 docker exec motorconnect-backend python3 create_admin.py
 
-# 3. Cargar manuales PDF a Supabase manuales_chunks (requiere OPENAI_API_KEY)
+# Cargar manuales PDF a Supabase (requiere OPENAI_API_KEY)
 python scripts/ingestion/ingestaManuales.py
+
+# Aplicar schema SQL en Supabase
+python scripts/db/apply_schema.py
 ```
 
-## Módulo de Diagnóstico de Fallas (RAG)
+## Modulo de Diagnostico de Fallas
 
-El sistema cuenta con un módulo especializado para diagnosticar problemas comunes en modelos específicos de Auteco, proporcionando una solución y un procedimiento paso a paso.
-
-### Ingesta de Fallas
-Para cargar la base de datos de conocimientos de fallas:
-
-```bash
-# Desde la raíz del proyecto
-node ingestion/ingest_fallas.js
-```
-
-### Cómo usarlo
-El agente Pegasus detectará automáticamente si tu consulta es un reporte de falla y consultará la base de datos de diagnósticos antes de buscar en los manuales técnicos, priorizando el paso a paso de revisión.
+El sistema detecta automáticamente si la consulta es un diagnóstico de falla y busca en `fallas_comunes.json` antes de los manuales técnicos, entregando un paso a paso de revisión.

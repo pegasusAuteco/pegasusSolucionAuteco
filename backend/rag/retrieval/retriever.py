@@ -118,30 +118,39 @@ def _format_falla(falla: dict) -> str:
     return "\n".join(parts)
 
 
+_DIAGNOSTIC_KEYWORDS = {
+    "falla", "fallo", "problema", "error", "no enciende", "no arranca",
+    "ruido", "vibra", "vibración", "pierde", "pérdida", "humo", "caliente",
+    "sobrecalienta", "fuga", "derrame", "daño", "avería", "revisión", "revisar",
+    "diagnostico", "diagnóstico", "síntoma", "sintoma", "chequear",
+}
+
+def _is_diagnostic_query(query: str) -> bool:
+    q = query.lower()
+    return any(kw in q for kw in _DIAGNOSTIC_KEYWORDS)
+
+
 def retrieve_context(query: str, top_k: int = 5) -> list[str]:
     """
     Pipeline de recuperación RAG:
     1. Genera embedding de la pregunta del usuario
-    2. Busca en la tabla de fallas_diagnostico (prioridad alta)
+    2. Si es consulta de falla/diagnóstico: busca en fallas_diagnostico
     3. Busca en manuales_chunks (información técnica general)
     4. Formatea y combina resultados
     """
     embedding = embed_query(query)
-    
-    # 1. Buscar en base de datos de fallas (específica)
-    fallas = search_similar_fallas(embedding, top_k=2)
-    
-    # 2. Buscar en manuales (general)
-    chunks = search_similar_chunks(embedding, top_k=top_k)
 
     context_texts = []
-    
-    # Añadir fallas primero (prioridad diagnóstica)
-    for f in fallas:
-        formatted = _format_falla(f)
-        context_texts.append(formatted)
-        
-    # Añadir manuales
+
+    # Solo buscar en fallas si la consulta tiene indicadores de diagnóstico
+    if _is_diagnostic_query(query):
+        fallas = search_similar_fallas(embedding, top_k=2)
+        for f in fallas:
+            formatted = _format_falla(f)
+            context_texts.append(formatted)
+
+    # Siempre buscar en manuales
+    chunks = search_similar_chunks(embedding, top_k=top_k)
     for chunk in chunks:
         formatted = _format_chunk(chunk)
         if formatted.strip():

@@ -22,7 +22,11 @@ async def get_mongo_db():
     uri = os.getenv("MONGO_URI", "mongodb://localhost:27017")
     db_name = os.getenv("MONGO_DB_NAME", "motorconnect_logs")
     try:
-        client = AsyncIOMotorClient(uri)
+        is_atlas = "mongodb+srv" in uri or "mongodb.net" in uri
+        if is_atlas:
+            client = AsyncIOMotorClient(uri, serverSelectionTimeoutMS=30000)
+        else:
+            client = AsyncIOMotorClient(uri)
         db = client[db_name]
         logger.info(f"MongoDB connection established — db: {db_name}")
         return db

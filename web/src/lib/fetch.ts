@@ -8,7 +8,7 @@ export async function apiFetch<T>(url: string, options: FetchOptions = {}): Prom
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
 
-  const token = localStorage.getItem('pegasus-token');
+  const token = localStorage.getItem('token');
   const headers = new Headers(fetchOptions.headers || {});
   
   if (token) {
@@ -29,8 +29,8 @@ export async function apiFetch<T>(url: string, options: FetchOptions = {}): Prom
     clearTimeout(id);
 
     if (response.status === 401 && !url.includes('/auth/login')) {
-      localStorage.removeItem('pegasus-token');
-      localStorage.removeItem('pegasus-auth'); // if zustand persist is used
+      localStorage.removeItem('token');
+      localStorage.removeItem('auth_user');
       window.location.href = '/login';
       throw new Error('Unauthorized');
     }

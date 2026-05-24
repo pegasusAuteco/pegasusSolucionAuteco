@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     VECTOR_MATCH_COUNT: int = 5
 
     # === DATABASE (PostgreSQL) ===
-    DATABASE_URL: str = "postgresql+asyncpg://motorconnect:localdev123@db:5432/motorconnect_db"
+    DATABASE_URL: str = ""
 
     # === AUTH ===
     JWT_SECRET: str = "change-me-in-production"

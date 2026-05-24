@@ -3,7 +3,7 @@ import ChatBubble from './ChatBubble';
 import { Send, Loader2, Mic, MicOff, ImagePlus, X } from 'lucide-react';
 import { useChatUI } from '@hooks/useChatUI';
 import { useAuthStore } from '@store/authStore';
-import { useMessages, useSendMessage } from '@hooks/useChat';
+import { useMessages, useSendMessage, useCreateConversation } from '@hooks/useChat';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Message } from '@types';
 
@@ -32,17 +32,12 @@ const ChatContainer = () => {
   const user = useAuthStore((s) => s.user);
   const userName = user?.name || user?.email || 'Mecánico';
 
-  const { activeConversationId, pendingChatInput, setPendingChatInput } = useChatUI();
+  const { activeConversationId, setActiveConversation, pendingChatInput, setPendingChatInput } = useChatUI();
   const { data: messages = [], isLoading: isLoadingMessages } = useMessages(activeConversationId);
   const sendMessage = useSendMessage();
-  const isLoading = isLoadingMessages || sendMessage.isPending;
+  const createConversation = useCreateConversation();
+  const isLoading = isLoadingMessages || sendMessage.isPending || createConversation.isPending;
   const queryClient = useQueryClient();
-
-  const addMessage = useCallback((message: Message) => {
-    queryClient.setQueryData<Message[]>(['messages', activeConversationId], (old) => {
-      return old ? [...old, message] : [message];
-    });
-  }, [queryClient, activeConversationId]);
 
   // Reset streaming when switching conversations
   useEffect(() => {
@@ -69,7 +64,7 @@ const ChatContainer = () => {
     }
   }, [messages, isLoading, streamingText]);
 
-  const startStreaming = useCallback((message: Message) => {
+  const startStreaming = useCallback((message: Message, conversationId: string) => {
     setIsStreaming(true);
     setStreamingText('');
     let i = 0;
@@ -83,12 +78,12 @@ const ChatContainer = () => {
       } else {
         setIsStreaming(false);
         setStreamingText('');
-        addMessage(message);
+        queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
       }
     };
 
     typeNext();
-  }, [addMessage]);
+  }, [queryClient]);
 
   // ── Audio handlers ────────────────────────────────────────────────
   const startRecording = useCallback(async () => {
@@ -135,27 +130,40 @@ const ChatContainer = () => {
 
   const clearImage = () => { setImagePreview(null); setImageName(null); };
 
+  const doSend = useCallback((conversationId: string, message: string) => {
+    sendMessage.mutate(
+      { conversationId, content: message },
+      { onSuccess: (data) => startStreaming(data, conversationId) },
+    );
+  }, [sendMessage, startStreaming]);
+
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = input.trim();
     if (!trimmed && !audioBlob && !imagePreview) return;
-    if (!activeConversationId || isLoading || isStreaming) return;
+    if (isLoading || isStreaming) return;
     let message = trimmed;
     if (imageName) message += message ? ` [Imagen: ${imageName}]` : `[Imagen: ${imageName}]`;
     if (audioBlob) message += message ? ' [Audio adjunto]' : '[Audio adjunto]';
     setInput('');
     clearAudio();
     clearImage();
-    sendMessage.mutate(
-      { conversationId: activeConversationId, content: message },
-      { onSuccess: (data) => startStreaming(data) },
-    );
+    if (activeConversationId) {
+      doSend(activeConversationId, message);
+    } else {
+      createConversation.mutate(undefined, {
+        onSuccess: (conv) => {
+          setActiveConversation(conv.id);
+          doSend(conv.id, message);
+        },
+      });
+    }
   };
 
   const isBusy = isLoading || isStreaming;
   const showWelcome = messages.length === 0 && !isStreaming;
 
-  const canSend = (!!input.trim() || !!audioBlob || !!imagePreview) && !isBusy && !!activeConversationId;
+  const canSend = (!!input.trim() || !!audioBlob || !!imagePreview) && !isBusy;
 
   const chatInput = (formClass: string, inputClass: string) => (
     <div className={formClass}>
@@ -183,7 +191,7 @@ const ChatContainer = () => {
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          disabled={isBusy || !activeConversationId}
+          disabled={isBusy}
           title="Adjuntar imagen"
           className={`rounded-xl p-2 transition-colors shrink-0 ${
             imagePreview ? 'bg-green-100 text-green-600 hover:bg-green-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
@@ -197,7 +205,7 @@ const ChatContainer = () => {
         <button
           type="button"
           onClick={() => isRecording ? stopRecording() : startRecording()}
-          disabled={isBusy || !activeConversationId}
+          disabled={isBusy}
           title={isRecording ? 'Detener grabación' : 'Grabar audio'}
           className={`rounded-xl p-2 transition-colors shrink-0 ${
             isRecording ? 'animate-pulse bg-red-100 text-red-600 hover:bg-red-200'
@@ -217,7 +225,7 @@ const ChatContainer = () => {
             className={inputClass}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            disabled={isBusy || !activeConversationId}
+            disabled={isBusy}
           />
           <button
             type="submit"

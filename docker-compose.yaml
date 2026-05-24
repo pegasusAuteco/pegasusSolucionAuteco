@@ -47,22 +47,6 @@ services:
       - motorconnect-net
     restart: unless-stopped
 
-  # MongoDB - Cold Persistent Logs
-  mongodb:
-    image: mongo:7.0
-    container_name: motorconnect-mongodb
-    ports:
-      - "27017:27017"
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-motorconnect}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-localdev123}
-      MONGO_INITDB_DATABASE: motorconnect_logs
-    volumes:
-      - mongo_data:/data/db
-    networks:
-      - motorconnect-net
-    restart: unless-stopped
-
   # Backend - FastAPI
   backend:
     build:
@@ -70,16 +54,16 @@ services:
       dockerfile: Dockerfile
     container_name: motorconnect-backend
     environment:
-      DATABASE_URL: postgresql+asyncpg://${DB_USER:-motorconnect}:${DB_PASSWORD:-localdev123}@db:5432/${DB_NAME:-motorconnect_db}
+      DATABASE_URL: ${DATABASE_URL}
       QDRANT_URL: http://qdrant:6333
       QDRANT_API_KEY: ${QDRANT_API_KEY:-qdrant-key}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-in-prod}
       ENVIRONMENT: ${ENVIRONMENT:-development}
       DEBUG: ${DEBUG:-False}
-      REDIS_URL: redis://redis:6379/0
-      MONGO_URI: mongodb://${MONGO_USER:-motorconnect}:${MONGO_PASSWORD:-localdev123}@mongodb:27017/motorconnect_logs?authSource=admin
-      MONGO_DB_NAME: motorconnect_logs
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      MONGO_URI: ${MONGO_URI}
+      MONGO_DB_NAME: ${MONGO_DB_NAME:-motorconnect_logs}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       SUPABASE_URL: ${SUPABASE_URL:-}
       SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY:-}
@@ -92,11 +76,12 @@ services:
         condition: service_started
       redis:
         condition: service_started
-      mongodb:
-        condition: service_started
     volumes:
       - ./backend:/app
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     networks:
       - motorconnect-net
     restart: unless-stopped
@@ -108,6 +93,8 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_API_URL: /api
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_KEY: ${VITE_SUPABASE_KEY}
     container_name: motorconnect-web
     ports:
       - "5173:80"
@@ -123,7 +110,6 @@ volumes:
   postgres_data:
   qdrant_data:
   redis_data:
-  mongo_data:
 
 networks:
   motorconnect-net:
