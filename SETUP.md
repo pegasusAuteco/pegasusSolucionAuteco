@@ -1,5 +1,5 @@
 # 🚀 Configuración Rápida (Cualquier PC)
-
+vovlemos al commit viejo
 Sigue estos 4 pasos para poner a correr el proyecto desde cero:
 
 ### 1. Requisitos
