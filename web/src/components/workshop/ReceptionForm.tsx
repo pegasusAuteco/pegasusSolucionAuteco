@@ -12,7 +12,7 @@ const receptionSchema = z.object({
   email: z.string().email('Formato de correo inválido').or(z.literal('')).optional(),
   entryDate: z.string().min(1, 'La fecha es requerida'),
   model: z.string().min(1, 'La marca/modelo es requerida'),
-  plate: z.string().min(1, 'La placa es requerida'),
+  plate: z.string().toUpperCase().regex(/^[A-Z]{3}-?\d{2}[A-Z]$/, 'Formato inválido. Debe ser AAA-12B o AAA12B'),
   mileage: z.number({ invalid_type_error: 'El kilometraje es requerido' }).min(0, 'Debe ser un valor positivo'),
   observations: z.string().min(1, 'Las observaciones son requeridas').max(500, 'Máximo 500 caracteres'),
 });

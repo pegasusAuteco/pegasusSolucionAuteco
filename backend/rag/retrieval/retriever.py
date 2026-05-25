@@ -13,7 +13,7 @@ Estructura de cada fila en manuales_chunks:
 """
 import json
 from openai import OpenAI
-from config import OPENAI_API_KEY, EMBEDDING_MODEL
+from config import OPENAI_API_KEY, EMBEDDING_MODEL, VECTOR_MATCH_COUNT
 from vector_store.supabase_client import search_similar_chunks, search_similar_fallas
 
 _openai_client: OpenAI | None = None
@@ -143,7 +143,7 @@ def _is_trivial_query(query: str) -> bool:
     return False
 
 
-def retrieve_context(query: str, top_k: int = 5) -> list[str]:
+def retrieve_context(query: str, top_k: int = VECTOR_MATCH_COUNT) -> list[str]:
     """
     Pipeline de recuperación RAG:
     1. Si es saludo o mensaje trivial: no busca contexto

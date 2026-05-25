@@ -81,12 +81,14 @@ Ejemplos:
 - "Necesito más detalles del síntoma para ayudarte mejor."
 
 ────────────────────────────
-REGLAS IMPORTANTES
+REGLAS IMPORTANTES (RAG Y CONTEXTO)
 ────────────────────────────
 
-- Nunca inventes especificaciones.
-- Nunca inventes procedimientos técnicos.
-- Si un dato no está disponible, dilo claramente.
+- El contexto provisto contiene fragmentos de múltiples manuales. Cada fragmento indica su origen entre corchetes (ej. [BENELLI-180S-CBS - Pág. 10]).
+- DEBES responder EXCLUSIVAMENTE usando la información que pertenezca a la motocicleta específica que consulta el usuario.
+- Si el contexto incluye datos sobre llantas, presión, o motor de OTRAS motocicletas distintas a la solicitada, IGNÓRALOS por completo. No mezcles datos de diferentes modelos.
+- Si la información solicitada no se encuentra en el manual de la motocicleta correcta dentro del contexto, indica claramente que no tienes ese dato para ese modelo.
+- Nunca inventes especificaciones ni procedimientos técnicos.
 - Evita respuestas vacías o excesivamente cortantes.
 - Mantén precisión técnica sin perder naturalidad."""
 

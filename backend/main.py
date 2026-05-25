@@ -24,15 +24,25 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-    redis = await get_redis()
-    mongo_db = await get_mongo_db()
-    app.state.log_service = ConversationLogService(redis, mongo_db)
-    app.state.mongo_db = mongo_db
+    try:
+        redis = await get_redis()
+        mongo_db = await get_mongo_db()
+        app.state.log_service = ConversationLogService(redis, mongo_db)
+        app.state.mongo_db = mongo_db
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(
+            f"⚠️  Redis/MongoDB no disponibles — logs desactivados: {e}"
+        )
+        app.state.log_service = None
+        app.state.mongo_db = None
+        redis = None
 
     yield
 
     await engine.dispose()
-    await redis.aclose()
+    if redis:
+        await redis.aclose()
 
 # Validar configuración al arrancar
 validate_config()

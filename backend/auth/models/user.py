@@ -10,6 +10,8 @@ from database import Base
 class UserRole(str, enum.Enum):
     EMPLOYEE = "employee"
     ADMIN = "admin"
+    MECANICO = "mecanico"
+    SECRETARIO = "secretario"
 
 
 class User(Base):

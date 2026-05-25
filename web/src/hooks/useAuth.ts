@@ -8,10 +8,10 @@ import { supabaseAuthService, type UserRole } from '@services/supabaseAuthServic
 // ─── Destino de redirección por rol ──────────────────────────────────────────
 function roleRedirect(role: string): string {
   switch (role) {
-    case 'mecanico':   return '/chat'
+    case 'mecanico': return '/chat'
     case 'secretario': return '/workshop'
-    case 'admin':      return '/chat'
-    default:           return '/workshop'
+    case 'admin': return '/chat'
+    default: return '/workshop'
   }
 }
 
@@ -29,6 +29,9 @@ export function useLogin() {
       setAuth(user, access_token)
       addToast('success', `Bienvenido, ${user.name} 👋`)
       navigate(roleRedirect(user.role))
+    },
+    onError: (err: any) => {
+      addToast('error', err?.response?.data?.detail ?? 'Error al iniciar sesión')
     },
   })
 }

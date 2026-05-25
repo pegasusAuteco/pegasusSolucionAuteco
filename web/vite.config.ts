@@ -18,7 +18,8 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5173,
+    // Puerto 5174 para desarrollo nativo con npm run dev (5173 lo usa el contenedor Docker)
+    port: 5174,
     proxy: {
       '/api': {
         target: process.env.VITE_API_URL || 'http://localhost:8001',

@@ -34,7 +34,36 @@ export const workshopService = {
    * Llamado desde ReceptionForm al hacer submit.
    */
   createIngreso: async (data: IngresoTaller): Promise<void> => {
-    const { error } = await supabase.from('ingresos_taller').insert([data])
+    // 1. Verificamos si la placa ya existe
+    const { data: existing, error: checkError } = await supabase
+      .from('motorcycles')
+      .select('id')
+      .eq('plate', data.placa)
+      .limit(1)
+
+    if (checkError) {
+      console.error('[workshopService] Error al verificar placa:', checkError.message)
+      throw new Error('Error validando la placa en la base de datos')
+    }
+
+    if (existing && existing.length > 0) {
+      throw new Error(`La placa ${data.placa} ya se encuentra registrada en el taller.`)
+    }
+
+    // 2. Mapeamos los datos del formulario a las columnas reales de 'motorcycles'
+    const dbPayload = {
+      client_name: data.cliente,
+      client_id: data.documento_identidad,
+      email: data.correo_electronico,
+      entry_date: data.fecha_ingreso,
+      model: data.marca_modelo,
+      plate: data.placa,
+      mileage: data.kilometraje,
+      observations: data.observaciones,
+      status: 'pending'
+    }
+
+    const { error } = await supabase.from('motorcycles').insert([dbPayload])
     if (error) {
       console.error('[workshopService] Error al insertar ingreso:', error.message)
       throw new Error(error.message)
@@ -42,20 +71,26 @@ export const workshopService = {
   },
 
   /**
-   * Devuelve los ingresos para el mecánico.
-   * Solo expone: id, marca_modelo, placa, observaciones, fecha_ingreso.
-   * Equivale al endpoint GET /api/mecanicos/motos del schema.
+   * Devuelve los ingresos para el mecánico desde Supabase 'motorcycles'.
    */
   getMotosMecanico: async (): Promise<MotoMecanico[]> => {
     const { data, error } = await supabase
-      .from('ingresos_taller')
-      .select('id, marca_modelo, placa, observaciones, fecha_ingreso')
-      .order('fecha_ingreso', { ascending: false })
+      .from('motorcycles')
+      .select('id, model, plate, observations, entry_date')
+      .order('entry_date', { ascending: false })
 
     if (error) {
       console.error('[workshopService] Error al obtener motos:', error.message)
       throw new Error(error.message)
     }
-    return data ?? []
+
+    // Mapeamos de vuelta al formato que espera el frontend (MotoMecanico)
+    return (data ?? []).map((row: any) => ({
+      id: row.id,
+      marca_modelo: row.model,
+      placa: row.plate,
+      observaciones: row.observations,
+      fecha_ingreso: row.entry_date
+    }))
   },
 }

@@ -47,6 +47,21 @@ services:
       - motorconnect-net
     restart: unless-stopped
 
+  # MongoDB - Chat Logs
+  mongodb:
+    image: mongo:6-jammy
+    container_name: motorconnect-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-motorconnect}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-localdev123}
+    ports:
+      - "27018:27017" # Map to 27018 on host to avoid port conflicts
+    volumes:
+      - mongo_data_v2:/data/db
+    networks:
+      - motorconnect-net
+    restart: unless-stopped
+
   # Backend - FastAPI
   backend:
     build:
@@ -110,6 +125,8 @@ volumes:
   postgres_data:
   qdrant_data:
   redis_data:
+  mongo_data:
+  mongo_data_v2:
 
 networks:
   motorconnect-net:
