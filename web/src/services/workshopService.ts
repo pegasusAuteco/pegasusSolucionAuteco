@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase'
 export interface IngresoTaller {
   cliente: string
   documento_identidad: string
+  celular: string
   correo_electronico?: string
   fecha_ingreso: string
   marca_modelo: string
@@ -54,6 +55,7 @@ export const workshopService = {
     const dbPayload = {
       client_name: data.cliente,
       client_id: data.documento_identidad,
+      phone: data.celular,
       email: data.correo_electronico,
       entry_date: data.fecha_ingreso,
       model: data.marca_modelo,

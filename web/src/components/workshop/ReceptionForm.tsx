@@ -9,6 +9,7 @@ import { workshopService } from '../../services/workshopService';
 const receptionSchema = z.object({
   clientName: z.string().min(1, 'El nombre del cliente es requerido'),
   clientId: z.string().min(1, 'El documento es requerido'),
+  phone: z.string().regex(/^\d+$/, 'Solo se permiten números').min(7, 'Mínimo 7 dígitos').max(10, 'Máximo 10 dígitos'),
   email: z.string().email('Formato de correo inválido').or(z.literal('')).optional(),
   entryDate: z.string().min(1, 'La fecha es requerida'),
   model: z.string().min(1, 'La marca/modelo es requerida'),
@@ -44,6 +45,7 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }: Rece
   const [formData, setFormData] = useState<ReceptionFormData>({
     clientName: initialData?.clientName ?? '',
     clientId: initialData?.clientId ?? '',
+    phone: initialData?.phone ?? '',
     email: initialData?.email ?? '',
     entryDate: initialData?.entryDate ?? getLocalISODate(),
     model: initialData?.model ?? '',
@@ -61,6 +63,15 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }: Rece
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
+
+    if (name === 'phone') {
+      const onlyNums = value.replace(/\D/g, '');
+      if (onlyNums.length > 10) return;
+      setFormData((prev) => ({ ...prev, [name]: onlyNums }));
+      if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
+      return;
+    }
+
     setFormData((prev) => ({
       ...prev,
       [name]: name === 'mileage' ? (value === '' ? ('' as unknown as number) : Number(value)) : value,
@@ -90,6 +101,7 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }: Rece
         updateEntry(initialData.id, {
           clientName: data.clientName,
           clientId: data.clientId,
+          phone: data.phone,
           email: data.email || '',
           model: data.model,
           plate: data.plate.toUpperCase(),
@@ -108,6 +120,7 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }: Rece
         await workshopService.createIngreso({
           cliente: data.clientName,
           documento_identidad: data.clientId,
+          celular: data.phone,
           correo_electronico: data.email || undefined,
           fecha_ingreso: data.entryDate,
           marca_modelo: data.model,
@@ -120,6 +133,7 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }: Rece
         registerEntry({
           clientName: data.clientName,
           clientId: data.clientId,
+          phone: data.phone,
           email: data.email || '',
           model: data.model,
           plate: data.plate.toUpperCase(),
@@ -132,6 +146,7 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }: Rece
         setFormData({
           clientName: '',
           clientId: '',
+          phone: '',
           email: '',
           entryDate: getLocalISODate(),
           model: '',
@@ -190,6 +205,21 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }: Rece
               className={inputClass('clientId')}
             />
             {errors.clientId && <p className="text-xs text-red-500">{errors.clientId}</p>}
+          </div>
+
+          {/* Celular */}
+          <div className="space-y-2">
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">Celular</label>
+            <input
+              type="tel"
+              name="phone"
+              value={formData.phone}
+              onChange={handleChange}
+              maxLength={10}
+              placeholder="Ej: 3001234567"
+              className={inputClass('phone')}
+            />
+            {errors.phone && <p className="text-xs text-red-500">{errors.phone}</p>}
           </div>
 
           {/* Correo */}

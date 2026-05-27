@@ -15,7 +15,7 @@ export default function ChatBubble({ message, sender, text, timestamp }: ChatBub
     : (timestamp || '');
 
   return (
-    <div className={`animate-fade-in-up flex ${isIA ? 'justify-start' : 'justify-end'} mb-4`}>
+    <div className={`flex ${isIA ? 'justify-start' : 'justify-end animate-fade-in-up'} mb-4`}>
       <div
         className={`max-w-[80%] px-4 py-3 rounded-2xl shadow-md transition-colors duration-300 ${
           isIA

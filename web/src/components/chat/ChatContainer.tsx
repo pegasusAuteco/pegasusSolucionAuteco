@@ -65,24 +65,8 @@ const ChatContainer = () => {
   }, [messages, isLoading, streamingText]);
 
   const startStreaming = useCallback((message: Message, conversationId: string) => {
-    setIsStreaming(true);
-    setStreamingText('');
-    let i = 0;
-    const fullText = message.content;
-
-    const typeNext = () => {
-      i++;
-      if (i <= fullText.length) {
-        setStreamingText(fullText.slice(0, i));
-        streamTimerRef.current = setTimeout(typeNext, STREAM_INTERVAL_MS);
-      } else {
-        setIsStreaming(false);
-        setStreamingText('');
-        queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
-      }
-    };
-
-    typeNext();
+    // Se elimina la animación de "typewriter" y se muestra la respuesta completa inmediatamente.
+    queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
   }, [queryClient]);
 
   // ── Audio handlers ────────────────────────────────────────────────

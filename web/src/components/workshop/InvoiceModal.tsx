@@ -53,6 +53,7 @@ export default function InvoiceModal({ entry, onClose }: InvoiceModalProps) {
               <p className="text-xs text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider mb-1">Cliente</p>
               <p className="font-semibold text-gray-900 dark:text-white">{entry.clientName}</p>
               <p className="text-gray-600 dark:text-gray-400">CC/NIT: {entry.clientId}</p>
+              {entry.phone && <p className="text-gray-600 dark:text-gray-400">Celular: {entry.phone}</p>}
             </div>
             <div className="text-right">
               <p className="text-xs text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider mb-1">Vehículo</p>

@@ -10,6 +10,7 @@ export interface MotorcycleEntry {
   id: string;
   clientName: string;
   clientId: string;
+  phone: string;
   email: string;
   entryDate: string;
   model: string;
