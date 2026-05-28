@@ -4,7 +4,6 @@ import Layout from '@components/layout/Layout'
 import ProtectedRoute from '@components/auth/ProtectedRoute'
 import ToastViewport from '@components/shared/ToastViewport'
 import { ChatProvider } from './contexts/ChatContext'
-import { WorkshopProvider } from './contexts/WorkshopContext'
 import { useAuthStore } from '@store/authStore'
 
 const LoginPage    = lazy(() => import('@pages/LoginPage'))
@@ -30,30 +29,29 @@ export default function App() {
     <BrowserRouter>
       <ToastViewport />
       <Suspense fallback={Loader}>
-        <WorkshopProvider>
-          <ChatProvider>
-            <Routes>
-              {/* Públicas */}
-              <Route path="/login"    element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
+        {/* WorkshopProvider removed — workshop state is now global via zustand/persist in workshopStore.ts */}
+        <ChatProvider>
+          <Routes>
+            {/* Públicas */}
+            <Route path="/login"    element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
 
-              {/* Secretario + Admin: Taller Pegasus completo */}
-              <Route element={<ProtectedRoute allowedRoles={['secretario', 'admin']} redirectTo="/chat" />}>
-                <Route path="/workshop" element={<WorkshopPage />} />
-              </Route>
+            {/* Secretario + Admin: Taller Pegasus completo */}
+            <Route element={<ProtectedRoute allowedRoles={['secretario', 'admin']} redirectTo="/chat" />}>
+              <Route path="/workshop" element={<WorkshopPage />} />
+            </Route>
 
-              {/* Admin + cualquier autenticado: Chat / Historial / Perfil */}
-              <Route element={<ProtectedRoute />}>
-                <Route path="/chat"    element={<Layout />} />
-                <Route path="/history" element={<HistoryPage />} />
-                <Route path="/profile" element={<ProfilePage />} />
-              </Route>
+            {/* Admin + cualquier autenticado: Chat / Historial / Perfil */}
+            <Route element={<ProtectedRoute />}>
+              <Route path="/chat"    element={<Layout />} />
+              <Route path="/history" element={<HistoryPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
+            </Route>
 
-              {/* Wildcard: redirige al home del rol */}
-              <Route path="*" element={<RoleRedirect />} />
-            </Routes>
-          </ChatProvider>
-        </WorkshopProvider>
+            {/* Wildcard: redirige al home del rol */}
+            <Route path="*" element={<RoleRedirect />} />
+          </Routes>
+        </ChatProvider>
       </Suspense>
     </BrowserRouter>
   )

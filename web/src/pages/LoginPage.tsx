@@ -24,7 +24,6 @@ export default function LoginPage() {
 
   const [formData, setFormData] = useState<LoginForm>({ email: '', password: '' })
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [isSubmitting, setIsSubmitting] = useState(false)
   // Stores the last submitted payload so the retry button can reuse it.
   const [retryPayload, setRetryPayload] = useState<LoginForm | null>(null)
 
@@ -65,7 +64,7 @@ export default function LoginPage() {
       return
     }
 
-    setIsSubmitting(true)
+    // isPending from TanStack Query drives the disabled/spinner state — no local flag needed.
     try {
       await loginMutation.mutateAsync(data)
       setRetryPayload(null)
@@ -81,8 +80,6 @@ export default function LoginPage() {
         setRetryPayload(data)
         addToast('error', detail)
       }
-    } finally {
-      setIsSubmitting(false)
     }
   }
 
@@ -152,10 +149,10 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={loginMutation.isPending}
             className="w-full flex items-center justify-center gap-2 bg-auteco-red text-white py-3 px-4 rounded-xl hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-auteco-red transition-all shadow-md hover:shadow-lg active:scale-95 font-medium disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? (
+            {loginMutation.isPending ? (
               <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />

@@ -1,13 +1,12 @@
-import { useContext } from 'react';
-import { WorkshopContext } from '../contexts/WorkshopContext';
+// ── useWorkshop ───────────────────────────────────────────────────────────────
+// Thin wrapper over useWorkshopStore that preserves the same call-site API
+// as the previous Context implementation, so no workshop component needs to change.
+// Types are re-exported from the store so consumers have a single import point.
 
-// Re-export types so consumers can import from a single place
-export type { MotorcycleEntry, Part, WorkshopContextType } from '../contexts/WorkshopContext';
+import { useWorkshopStore } from '@store/workshopStore'
+
+export type { MotorcycleEntry, Part, WorkshopState as WorkshopContextType } from '@store/workshopStore'
 
 export function useWorkshop() {
-  const context = useContext(WorkshopContext);
-  if (context === undefined) {
-    throw new Error('useWorkshop must be used within a WorkshopProvider');
-  }
-  return context;
+  return useWorkshopStore()
 }

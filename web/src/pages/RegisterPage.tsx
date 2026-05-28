@@ -62,7 +62,6 @@ export default function RegisterPage() {
     empresa_taller: '',
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
@@ -88,7 +87,7 @@ export default function RegisterPage() {
       return
     }
 
-    setIsSubmitting(true)
+    // isPending from TanStack Query drives the disabled/spinner state — no local flag needed.
     try {
       await registerMutation.mutateAsync({
         nombre: result.data.nombre,
@@ -107,8 +106,6 @@ export default function RegisterPage() {
         setErrors({ root: msg })
         addToast('error', msg)
       }
-    } finally {
-      setIsSubmitting(false)
     }
   }
 
@@ -274,10 +271,10 @@ export default function RegisterPage() {
 
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={registerMutation.isPending}
             className="w-full flex items-center justify-center gap-2 bg-gray-900 dark:bg-white dark:text-gray-900 text-white py-3 px-4 rounded-xl hover:bg-black dark:hover:bg-gray-100 transition-all shadow-md hover:shadow-lg active:scale-95 font-semibold mt-2 disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? (
+            {registerMutation.isPending ? (
               <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
