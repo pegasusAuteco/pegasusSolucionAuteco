@@ -3,11 +3,17 @@ from pydantic import BaseModel, field_validator
 from typing import Optional
 
 
+# ── Registration payload ──────────────────────────────────────────────────────
+# Validates all fields before they reach the service layer.
+# Password rules and rol whitelist must stay in sync with the frontend
+# validation schema in web/src/pages/RegisterPage.tsx.
 class RegisterRequest(BaseModel):
     nombre: str
     email: str
     password: str
     accept_terms: bool
+    # Defaults to mecanico; admin role is assigned manually, never via self-registration.
+    rol: str = "mecanico"
     empresa_taller: Optional[str] = None
 
     @field_validator("nombre")
@@ -25,6 +31,7 @@ class RegisterRequest(BaseModel):
             raise ValueError("Formato de email inválido")
         return v.lower().strip()
 
+    # Password policy: 8–12 chars, at least one uppercase, one lowercase, one digit.
     @field_validator("password")
     @classmethod
     def password_segura(cls, v):
@@ -40,6 +47,14 @@ class RegisterRequest(BaseModel):
             raise ValueError("La contraseña debe contener al menos un número")
         return v
 
+    # Only mecanico and secretario can self-register.
+    @field_validator("rol")
+    @classmethod
+    def rol_valido(cls, v):
+        if v not in {"mecanico", "secretario"}:
+            raise ValueError("Rol debe ser mecanico o secretario")
+        return v
+
     @field_validator("accept_terms")
     @classmethod
     def debe_aceptar_terminos(cls, v):
@@ -48,6 +63,8 @@ class RegisterRequest(BaseModel):
         return v
 
 
+# ── Registration response ─────────────────────────────────────────────────────
+# Returned after a successful POST /auth/register. Does not include password_hash.
 class RegisterResponse(BaseModel):
     id: int
     nombre: str
@@ -57,6 +74,7 @@ class RegisterResponse(BaseModel):
     created_at: str
 
 
+# ── Login payload and responses ───────────────────────────────────────────────
 class LoginRequest(BaseModel):
     email: str
     password: str

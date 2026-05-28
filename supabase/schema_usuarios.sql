@@ -4,9 +4,6 @@
 
 -- Enum de roles
 (((((CREADA Y LISTA PARA INGRESO DE DATA)))))
-(((((CREADA Y LISTA PARA INGRESO DE DATA)))))
-(((((CREADA Y LISTA PARA INGRESO DE DATA)))))
-
 DO $$ BEGIN
     CREATE TYPE userrole AS ENUM ('employee', 'admin');
 EXCEPTION
@@ -53,8 +50,6 @@ ALTER TABLE usuarios DISABLE ROW LEVEL SECURITY;
 -- MotorConnect — Schema: Recepción / Ingreso de Motos
 ----------------------------------------------------------------
 (((((CREADA Y LISTA PARA INGRESO DE DATA)))))
-(((((CREADA Y LISTA PARA INGRESO DE DATA)))))
-(((((CREADA Y LISTA PARA INGRESO DE DATA)))))
 
 CREATE TABLE IF NOT EXISTS ingresos_taller (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -80,8 +75,6 @@ CREATE TRIGGER set_ingresos_taller_updated_at
 ALTER TABLE ingresos_taller DISABLE ROW LEVEL SECURITY;
 
 --------------------------------------------------------------
-(((((A TENER EN CUENTA PARA MOSTRAR INFORMACION POR ROLES)))))
-(((((A TENER EN CUENTA PARA MOSTRAR INFORMACION POR ROLES)))))
 (((((A TENER EN CUENTA PARA MOSTRAR INFORMACION POR ROLES)))))
 
 /*

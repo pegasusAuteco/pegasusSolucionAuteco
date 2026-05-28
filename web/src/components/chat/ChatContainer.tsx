@@ -7,8 +7,6 @@ import { useMessages, useSendMessage, useCreateConversation } from '@hooks/useCh
 import { useQueryClient } from '@tanstack/react-query';
 import type { Message } from '@types';
 
-const STREAM_INTERVAL_MS = 16;
-
 const ChatContainer = () => {
   const [input, setInput] = useState('');
   const [streamingText, setStreamingText] = useState('');
@@ -64,7 +62,7 @@ const ChatContainer = () => {
     }
   }, [messages, isLoading, streamingText]);
 
-  const startStreaming = useCallback((message: Message, conversationId: string) => {
+  const startStreaming = useCallback((_message: Message, conversationId: string) => {
     // Se elimina la animación de "typewriter" y se muestra la respuesta completa inmediatamente.
     queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
   }, [queryClient]);

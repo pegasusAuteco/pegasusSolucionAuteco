@@ -42,6 +42,7 @@ lerna-debug.log*
 .DS_Store
 Thumbs.db
 
-activities.txt
-.claude
-documents/
+CLAUDE.md
+FRONTEND_CONSOLIDACION.md
+userstory.txt
+.claude/

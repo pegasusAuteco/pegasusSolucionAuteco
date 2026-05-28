@@ -1,108 +1,105 @@
-# 🏍️ Pegasus Mechanics — Asistente IA
+# Pegasus — Frontend
 
-Interfaz web para el taller **Pegasus Mechanics**, con un asistente de IA integrado y un panel de inventario de motos. Desarrollado con **React + Vite + TailwindCSS**.
-
----
-
-##  Características
-
-- 💬 **Chat IA** con historial de conversaciones guardadas, soporte de imágenes y reconocimiento de voz
-- 🏍️ **Inventario de motos** con búsqueda en tiempo real, nombre y cilindraje
-- 📱 **Diseño responsive** — adaptado para desktop y mobile
-- 🎨 Paleta de colores corporativa Auteco/Pegasus (`#E10600`, `#111111`)
+Interfaz web mobile-first para el taller **Pegasus Mechanics / Auteco**. Construida con React 18 + TypeScript + Vite + Tailwind CSS.
 
 ---
 
-## 🛠️ Requisitos previos
-
-Asegúrate de tener instalado:
+## Requisitos previos
 
 | Herramienta | Versión mínima |
 |-------------|----------------|
-| [Node.js](https://nodejs.org/) | 18.x o superior |
+| Node.js | 18.x o superior |
 | npm | 9.x o superior |
 
-Verifica tu versión con:
-```bash
-node -v
-npm -v
-```
-
 ---
 
-## 🚀 Instalación y puesta en marcha
-
-### 1. Clona el repositorio
+## Instalación y puesta en marcha
 
 ```bash
-git clone https://github.com/pegasusAuteco/pegasusSolucionAuteco.git
-cd pegasusSolucionAuteco
-```
-y luego `cd web`
-
-### 3. Instala las dependencias
-
-```bash
+# Desde la raíz del repositorio
+cd web
 npm install
-```
-
-### 4. Inicia el servidor de desarrollo
-
-```bash
-npm run dev
-```
-
-Abre tu navegador en **[http://localhost:5173](http://localhost:5173)**
-
----
-
-## 📁 Estructura del proyecto
-
-```
-├── public/
-│   ├── logo.png                  # Logo de Pegasus Mechanics
-│   └── images/motos/             # Imágenes de las motocicletas
-├── src/
-│   ├── components/
-│   │   ├── Chat/
-│   │   │   ├── ChatContainer.jsx # Panel de chat con historial y botones de voz/imagen
-│   │   │   └── ChatBubble.jsx    # Burbuja de mensaje individual
-│   │   ├── Inventory/
-│   │   │   ├── MotorcycleList.jsx# Lista de motos con buscador
-│   │   │   └── MotorcycleCard.jsx# Tarjeta de moto (imagen, nombre, cilindraje)
-│   │   └── DashboardLayout.jsx   # Layout principal (desktop/mobile)
-│   ├── App.jsx
-│   ├── App.css
-│   └── index.css                 # Estilos globales y tokens de diseño
-├── motos/                        # Catálogos PDF de referencia técnica
-├── package.json
-├── tailwind.config.js
-└── vite.config.js
+npm run dev        # http://localhost:5174
 ```
 
 ---
 
-##  Comandos disponibles
+## Dependencias de producción
+
+| Paquete | Dominio |
+|---------|---------|
+| `react` + `react-dom` | UI |
+| `react-router-dom` | Routing |
+| `@tanstack/react-query` | Estado servidor + caché HTTP |
+| `zustand` | Estado cliente puro (auth, toasts) |
+| `zod` | Validación de formularios y esquemas |
+| `@supabase/supabase-js` | Acceso directo a Supabase desde el cliente |
+| `lucide-react` | Iconografía |
+
+> HTTP se realiza con `fetch` nativo a través de `src/lib/fetch.ts` (`apiFetch`). No se usa axios.
+
+---
+
+## Comandos disponibles
 
 | Comando | Descripción |
 |---------|-------------|
-| `npm run dev` | Inicia el servidor de desarrollo con hot-reload |
-| `npm run build` | Genera el bundle de producción en `/dist` |
-| `npm run preview` | Previsualiza el build de producción localmente |
-| `npm run lint` | Ejecuta el linter ESLint |
+| `npm run dev` | Servidor de desarrollo con hot-reload en :5174 |
+| `npm run build` | Bundle de producción → `dist/` |
+| `npm run preview` | Previsualiza el build de producción |
+| `npm run lint` | ESLint + reporte de errores |
+| `npm run type-check` | Verificación de tipos TypeScript sin emitir |
+| `npm run format` | Prettier sobre `src/**` |
 
 ---
 
-## 🎙️ Nota sobre el reconocimiento de voz
+## Estructura del proyecto
 
-El botón de voz utiliza la **Web Speech API** del navegador.
-
-> ✅ Compatible con **Google Chrome** y **Microsoft Edge**  
-> ❌ No compatible con Firefox ni Safari (limitación del navegador, no del proyecto)
+```
+web/src/
+├── components/
+│   ├── auth/           # ProtectedRoute (guard por rol)
+│   ├── chat/           # ChatContainer, ChatBubble, ChatInput
+│   ├── inventory/      # MotorcycleCard, MotorcycleList
+│   ├── layout/         # Layout, Navbar
+│   ├── shared/         # EmptyState, ToastViewport
+│   └── workshop/       # ReceptionForm, MechanicDashboard, MotorcycleCard,
+│                       # CompactMechanicQueue, InvoiceModal
+├── contexts/           # ChatContext, WorkshopContext
+├── hooks/              # useAuth, useChat, useChatUI, useWorkshop
+├── lib/
+│   ├── fetch.ts        # apiFetch — wrapper fetch nativo con JWT e interceptor 401
+│   └── supabase.ts     # Cliente Supabase
+├── pages/              # LoginPage, RegisterPage, ChatPage, WorkshopPage,
+│                       # MechanicPage, HistoryPage, ProfilePage, AdminPage
+├── services/
+│   ├── api.ts          # authService, chatService, historyService, analyticsService
+│   ├── workshopService.ts  # CRUD motos en Supabase
+│   └── supabaseAuthService.ts
+├── store/
+│   ├── authStore.ts    # Zustand: user + token
+│   └── toastStore.ts   # Zustand: notificaciones
+├── types/              # index.ts — interfaces globales
+└── utils/
+    └── dates.ts        # getLocalISODate, formatRelativeTime (sin date-fns)
+```
 
 ---
 
+## Animaciones
 
-## 📄 Licencia
+Tailwind CSS gestiona todas las animaciones. La clase `animate-fade-in-up` (keyframe definido en `tailwind.config.js`) reemplaza framer-motion:
 
-Proyecto interno de **Pegasus Mechanics / Auteco**. Uso restringido.
+```tsx
+<div className="animate-fade-in-up" style={{ animationDelay: `${i * 100}ms` }}>
+```
+
+---
+
+## Notas de arquitectura
+
+- **Estado servidor** → TanStack Query (`useConversations`, `useMessages`, `useSendMessage`, etc.)
+- **Estado cliente** → Zustand solo para `authStore` y `toastStore`
+- **Formularios** → `useState` + `zod.safeParse` directo (sin react-hook-form)
+- **Fechas** → API `Intl` nativa del navegador (sin date-fns)
+- **Clases condicionales** → template literals de JS (sin clsx/tailwind-merge)

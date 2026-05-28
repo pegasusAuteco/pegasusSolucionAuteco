@@ -24,10 +24,13 @@ export interface LoginCredentials {
   password: string
 }
 
+// Payload sent to POST /auth/register.
+// accept_terms is always true (enforced at form level); rol is selected by the user.
 export interface RegisterData {
   nombre: string
   email: string
   password: string
+  rol: 'mecanico' | 'secretario'
   accept_terms: boolean
   empresa_taller?: string
 }

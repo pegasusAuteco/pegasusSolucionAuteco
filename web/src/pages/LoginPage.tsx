@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { z } from 'zod'
-
 import { Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react'
 import { useLogin } from '@hooks/useAuth'
 import { useAuthStore } from '@store/authStore'
 import { useToastStore } from '@store/toastStore'
 import { Navigate, useNavigate } from 'react-router-dom'
+import { ApiError } from '@/lib/fetch'
 
+// Client-side validation — only checks that fields are non-empty and well-formed.
+// Credential correctness is validated by the backend.
 const loginSchema = z.object({
   email: z.string().min(1, 'El email es requerido').email('Formato de email inválido'),
   password: z.string().min(1, 'La contraseña es requerida'),
@@ -19,10 +21,11 @@ export default function LoginPage() {
   const addToast = useToastStore((s) => s.addToast)
   const navigate = useNavigate()
   const loginMutation = useLogin()
-  
+
   const [formData, setFormData] = useState<LoginForm>({ email: '', password: '' })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+  // Stores the last submitted payload so the retry button can reuse it.
   const [retryPayload, setRetryPayload] = useState<LoginForm | null>(null)
 
   if (isAuthenticated) {
@@ -33,7 +36,6 @@ export default function LoginPage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
-    // Clear error when typing
     if (errors[e.target.name]) {
       setErrors({ ...errors, [e.target.name]: '' })
     }
@@ -41,20 +43,20 @@ export default function LoginPage() {
 
   const onSubmit = async (e?: React.FormEvent, dataToSubmit?: LoginForm) => {
     if (e) e.preventDefault()
-    
+
     const data = dataToSubmit || formData
-    
-    // Validation
+
     const result = loginSchema.safeParse(data)
     if (!result.success) {
       const formattedErrors: Record<string, string> = {}
       result.error.issues.forEach(issue => {
-        formattedErrors[issue.path[0]] = issue.message
+        formattedErrors[String(issue.path[0])] = issue.message
       })
       setErrors(formattedErrors)
       return
     }
 
+    // Guard against submitting with no internet before hitting the backend.
     if (!navigator.onLine) {
       const message = 'Sin conexión. Verifica tu internet y vuelve a intentarlo.'
       setRetryPayload(data)
@@ -67,11 +69,13 @@ export default function LoginPage() {
     try {
       await loginMutation.mutateAsync(data)
       setRetryPayload(null)
-    } catch (err: any) {
-      const isNetworkError = !err?.response
-      const detail = isNetworkError
-        ? 'No se pudo conectar con el servidor. Puedes reintentar.'
-        : err?.response?.data?.detail || 'Error de conexión. Inténtalo de nuevo.'
+    } catch (err: unknown) {
+      // status === 0 means no HTTP response was received (network failure).
+      // Any other ApiError carries a meaningful HTTP status from the backend.
+      const isNetworkError = err instanceof ApiError && err.status === 0
+      const detail = err instanceof ApiError
+        ? err.detail
+        : 'No se pudo conectar con el servidor. Puedes reintentar.'
       setErrors({ root: detail })
       if (isNetworkError) {
         setRetryPayload(data)
@@ -84,9 +88,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 p-4 transition-colors duration-300">
-      <div
-        className="animate-fade-in-up max-w-md w-full bg-white dark:bg-gray-900 rounded-2xl shadow-xl overflow-hidden"
-      >
+      <div className="animate-fade-in-up max-w-md w-full bg-white dark:bg-gray-900 rounded-2xl shadow-xl overflow-hidden">
         <div className="bg-auteco-red p-6 text-center">
           <img src="/logo.png" alt="Pegasus Mechanics" className="h-16 mx-auto object-contain drop-shadow-md mb-4 brightness-0 invert" />
           <h2 className="text-2xl font-bold text-white">Iniciar Sesión</h2>
@@ -126,9 +128,7 @@ export default function LoginPage() {
                   placeholder="admin@pegasus.com"
                 />
               </div>
-              {errors.email && (
-                <p className="text-red-500 text-xs mt-1">{errors.email}</p>
-              )}
+              {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
             </div>
 
             <div>
@@ -146,9 +146,7 @@ export default function LoginPage() {
                   placeholder="••••••••"
                 />
               </div>
-              {errors.password && (
-                <p className="text-red-500 text-xs mt-1">{errors.password}</p>
-              )}
+              {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
             </div>
           </div>
 

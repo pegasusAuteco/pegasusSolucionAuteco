@@ -4,8 +4,11 @@ import { User, Mail, Lock, Building2, AlertCircle, Wrench, ClipboardList, Shield
 import { useNavigate } from 'react-router-dom'
 import { useRegister } from '@hooks/useAuth'
 import { useToastStore } from '@store/toastStore'
+import { ApiError } from '@/lib/fetch'
 import type { UserRole } from '@types'
 
+// Validation schema — mirrors the constraints enforced by the backend RegisterRequest.
+// Password rules (8–12 chars, upper, lower, digit) must stay in sync with backend/auth/schemas.py.
 const registerSchema = z
   .object({
     nombre: z.string().min(1, 'El nombre es requerido').max(150, 'Máximo 150 caracteres'),
@@ -13,11 +16,12 @@ const registerSchema = z
     password: z
       .string()
       .min(8, 'Mínimo 8 caracteres')
-      .max(32, 'Máximo 32 caracteres')
+      .max(12, 'Máximo 12 caracteres')
       .regex(/[A-Z]/, 'Debe contener al menos una mayúscula')
       .regex(/[a-z]/, 'Debe contener al menos una minúscula')
       .regex(/\d/, 'Debe contener al menos un número'),
     confirmPassword: z.string().min(1, 'Debes confirmar la contraseña'),
+    // Only mecanico and secretario can self-register; admin is assigned manually.
     rol: z.enum(['mecanico', 'secretario'] as const, {
       errorMap: () => ({ message: 'Selecciona un rol válido' }),
     }),
@@ -91,11 +95,13 @@ export default function RegisterPage() {
         email: result.data.email,
         password: result.data.password,
         rol: result.data.rol,
+        accept_terms: true,
         empresa_taller: result.data.empresa_taller || undefined,
       })
-    } catch (err: any) {
-      const msg = err?.message || 'Error al registrar. Intenta de nuevo.'
-      if (msg.includes('correo')) {
+    } catch (err: unknown) {
+      const msg = err instanceof ApiError ? err.detail : 'Error al registrar. Intenta de nuevo.'
+      // HTTP 409 means the email is already registered — surface it on the email field.
+      if (err instanceof ApiError && err.status === 409) {
         setErrors({ email: msg })
       } else {
         setErrors({ root: msg })

@@ -9,6 +9,11 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 logger = logging.getLogger(__name__)
 
 
+# ── POST /auth/register ───────────────────────────────────────────────────────
+# Accepts a validated RegisterRequest, delegates to AuthService, and returns
+# the created user without sensitive fields.
+# 409 is returned when the email is already in use.
+
 @router.post("/register", response_model=RegisterResponse, status_code=201)
 async def register(payload: RegisterRequest):
     service = AuthService()
@@ -18,6 +23,7 @@ async def register(payload: RegisterRequest):
             email=payload.email,
             password=payload.password,
             accept_terms=payload.accept_terms,
+            rol=payload.rol,
             empresa_taller=payload.empresa_taller,
         )
         return RegisterResponse(
@@ -34,6 +40,11 @@ async def register(payload: RegisterRequest):
         logger.exception("Unexpected error in register endpoint")
         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
+
+# ── POST /auth/login ──────────────────────────────────────────────────────────
+# Authenticates the user via email + password and returns a signed JWT.
+# A generic 401 is returned on failure to avoid leaking whether
+# the email exists or the password was wrong.
 
 @router.post("/login", response_model=LoginResponse)
 async def login(payload: LoginRequest):
