@@ -1,4 +1,7 @@
 import { supabase } from '../lib/supabase'
+import { apiFetch } from '../lib/fetch'
+
+const baseURL = import.meta.env.VITE_API_URL || '/api'
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -70,6 +73,17 @@ export const workshopService = {
       console.error('[workshopService] Error al insertar ingreso:', error.message)
       throw new Error(error.message)
     }
+  },
+
+  /**
+   * Moves a completed repair from 'motorcycles' to 'motorcycles_completed'
+   * via an atomic backend RPC call. Throws ApiError on failure.
+   */
+  completeRepair: async (motorcycleId: string): Promise<void> => {
+    await apiFetch<unknown>(
+      `${baseURL}/workshop/motorcycles/${motorcycleId}/complete`,
+      { method: 'POST' },
+    )
   },
 
   /**

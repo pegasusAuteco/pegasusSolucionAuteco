@@ -3,6 +3,9 @@ import { useWorkshop, MotorcycleEntry } from '@hooks/useWorkshop';
 import { Clock, Wrench, Plus, CheckCircle2, Package, Edit, Trash2, FileText } from 'lucide-react';
 import { formatRelativeTime } from '../../utils/dates';
 import ReceptionForm from './ReceptionForm';
+import { workshopService } from '@services/workshopService';
+import { ApiError } from '@/lib/fetch';
+import { useToastStore } from '@store/toastStore';
 
 interface MotorcycleCardProps {
   entry: MotorcycleEntry;
@@ -13,8 +16,10 @@ export default function MotorcycleCard({ entry }: MotorcycleCardProps) {
   const [partQty, setPartQty] = useState(1);
   const [timeElapsed, setTimeElapsed] = useState('');
   const [isEditing, setIsEditing] = useState(false);
-  
+  const [isCompleting, setIsCompleting] = useState(false);
+
   const { addPartToEntry, removeEntry, removePartFromEntry, finishRepair } = useWorkshop();
+  const addToast = useToastStore((s) => s.addToast);
 
   useEffect(() => {
     const updateTimer = () => {
@@ -26,6 +31,20 @@ export default function MotorcycleCard({ entry }: MotorcycleCardProps) {
     const interval = setInterval(updateTimer, 60000); // update every minute
     return () => clearInterval(interval);
   }, [entry.timestamp]);
+
+  // Calls the backend to atomically archive the repair, then updates local state.
+  const handleFinishRepair = async () => {
+    setIsCompleting(true)
+    try {
+      await workshopService.completeRepair(entry.id)
+      finishRepair(entry.id)
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.detail : 'Error al completar la reparación'
+      addToast('error', msg)
+    } finally {
+      setIsCompleting(false)
+    }
+  }
 
   const handleAddPart = (e: React.FormEvent) => {
     e.preventDefault();
@@ -185,11 +204,19 @@ export default function MotorcycleCard({ entry }: MotorcycleCardProps) {
               Editar
             </button>
             <button
-              onClick={() => finishRepair(entry.id)}
+              onClick={handleFinishRepair}
+              disabled={isCompleting}
               title="Finalizar"
-              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50 rounded-lg transition-colors"
+              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50 rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <CheckCircle2 className="w-3.5 h-3.5" />
+              {isCompleting ? (
+                <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+              ) : (
+                <CheckCircle2 className="w-3.5 h-3.5" />
+              )}
               Terminar
             </button>
           </>
