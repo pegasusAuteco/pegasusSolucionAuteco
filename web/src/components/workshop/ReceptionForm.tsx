@@ -117,7 +117,7 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }: Rece
     } else {
       try {
         // 1. Guardar en Supabase (fuente de la verdad)
-        await workshopService.createIngreso({
+        const newId = await workshopService.createIngreso({
           cliente: data.clientName,
           documento_identidad: data.clientId,
           celular: data.phone,
@@ -131,6 +131,7 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }: Rece
 
         // 2. Actualizar estado local para la cola del mecánico
         registerEntry({
+          id: newId,
           clientName: data.clientName,
           clientId: data.clientId,
           phone: data.phone,

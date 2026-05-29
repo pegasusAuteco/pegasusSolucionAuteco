@@ -37,7 +37,7 @@ export const workshopService = {
    * Registra el ingreso de una moto en Supabase.
    * Llamado desde ReceptionForm al hacer submit.
    */
-  createIngreso: async (data: IngresoTaller): Promise<void> => {
+  createIngreso: async (data: IngresoTaller): Promise<string> => {
     // 1. Verificamos si la placa ya existe
     const { data: existing, error: checkError } = await supabase
       .from('motorcycles')
@@ -68,11 +68,13 @@ export const workshopService = {
       status: 'pending'
     }
 
-    const { error } = await supabase.from('motorcycles').insert([dbPayload])
+    const { data: insertedData, error } = await supabase.from('motorcycles').insert([dbPayload]).select('id').single()
     if (error) {
       console.error('[workshopService] Error al insertar ingreso:', error.message)
       throw new Error(error.message)
     }
+    
+    return insertedData.id;
   },
 
   /**

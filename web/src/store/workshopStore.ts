@@ -32,7 +32,7 @@ export interface WorkshopState {
   queue: MotorcycleEntry[]
   activeRepairId: string | null
   setActiveRepairId: (id: string | null) => void
-  registerEntry: (entry: Omit<MotorcycleEntry, 'id' | 'timestamp' | 'parts' | 'status'>) => void
+  registerEntry: (entry: Omit<MotorcycleEntry, 'timestamp' | 'parts' | 'status'>) => void
   updateEntry: (id: string, data: Partial<Omit<MotorcycleEntry, 'id' | 'timestamp' | 'parts' | 'status'>>) => void
   addPartToEntry: (entryId: string, part: Omit<Part, 'id'>) => void
   removePartFromEntry: (entryId: string, partId: string) => void
@@ -80,12 +80,12 @@ export const useWorkshopStore = create<WorkshopState>()(
 
       setActiveRepairId: (id) => set({ activeRepairId: id }),
 
-      // Appends a new entry with a generated id, current timestamp, and empty parts list.
+      // Appends a new entry with the provided id, current timestamp, and empty parts list.
       registerEntry: (data) =>
         set((s) => ({
           queue: [
             ...s.queue,
-            { ...data, id: crypto.randomUUID(), timestamp: Date.now(), status: 'pending', parts: [] },
+            { ...data, timestamp: Date.now(), status: 'pending', parts: [] },
           ],
         })),
 
