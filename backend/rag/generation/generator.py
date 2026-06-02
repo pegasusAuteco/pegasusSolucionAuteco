@@ -2,10 +2,11 @@
 Módulo de generación RAG.
 Construye el prompt con los chunks recuperados y llama a GPT para generar la respuesta.
 """
-from openai import OpenAI
+from openai import OpenAI, AsyncOpenAI
 from config import OPENAI_API_KEY, LLM_MODEL
 
 _openai_client: OpenAI | None = None
+_async_openai_client: AsyncOpenAI | None = None
 
 SYSTEM_PROMPT = """Eres Pegasus, asistente técnico especializado en motocicletas de Auteco Mobility.
 
@@ -100,6 +101,13 @@ def _get_openai() -> OpenAI:
     return _openai_client
 
 
+def _get_async_openai() -> AsyncOpenAI:
+    global _async_openai_client
+    if _async_openai_client is None:
+        _async_openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+    return _async_openai_client
+
+
 def build_rag_prompt(query: str, context_chunks: list[str]) -> str:
     """Construye el prompt de usuario con el contexto de los manuales (si existe)."""
     if context_chunks:
@@ -137,3 +145,32 @@ def generate_answer(
     )
 
     return response.choices[0].message.content or "No pude generar una respuesta."
+
+
+async def generate_answer_stream(
+    query: str,
+    context_chunks: list[str],
+    history: list[dict] | None = None,
+):
+    """Versión streaming de generate_answer. Yield cada token delta; yield None al terminar."""
+    client = _get_async_openai()
+    user_prompt = build_rag_prompt(query, context_chunks)
+
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    if history:
+        for msg in history:
+            messages.append({"role": msg["role"], "content": msg["content"]})
+    messages.append({"role": "user", "content": user_prompt})
+
+    stream = await client.chat.completions.create(
+        model=LLM_MODEL,
+        messages=messages,
+        temperature=0.2,
+        max_tokens=600,
+        stream=True,
+    )
+    async for chunk in stream:
+        delta = chunk.choices[0].delta.content
+        if delta:
+            yield delta
+    yield None

@@ -3,10 +3,11 @@ Router principal del chat.
 Gestiona conversaciones y mensajes. El endpoint de enviar mensaje
 ejecuta el pipeline RAG completo (retrieval + generation).
 """
-from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi import APIRouter, HTTPException, Depends, Request, WebSocket, WebSocketDisconnect, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from datetime import datetime, timezone
 from uuid import uuid4
+import asyncio
 
 from jose import jwt, JWTError
 
@@ -18,7 +19,7 @@ from chat.models.schemas import (
     MessageResponse,
 )
 from rag.retrieval.retriever import retrieve_context
-from rag.generation.generator import generate_answer
+from rag.generation.generator import generate_answer, generate_answer_stream
 from logs.log_service import ConversationLogService
 from config import settings
 
@@ -249,3 +250,111 @@ async def send_message(
         )
 
     return assistant_msg
+
+
+# ─── WebSocket ────────────────────────────────────────────────────────────────
+
+@router.websocket("/ws/{conversation_id}")
+async def chat_websocket(
+    conversation_id: str,
+    websocket: WebSocket,
+    token: str = Query(...),
+):
+    """
+    WebSocket bidireccional para chat con streaming.
+    El JWT llega como query param porque el browser no soporta
+    headers personalizados en el handshake WebSocket.
+    """
+    # Verificar JWT antes de aceptar la conexión
+    try:
+        payload = jwt.decode(
+            token,
+            settings.JWT_SECRET,
+            algorithms=[settings.JWT_ALGORITHM],
+        )
+        user_id = payload["sub"]
+    except JWTError:
+        await websocket.close(code=1008)
+        return
+
+    log_service: ConversationLogService = websocket.app.state.log_service
+    col = websocket.app.state.mongo_db["conversations"]
+
+    conv = await col.find_one({"id": conversation_id, "user_id": user_id})
+    if not conv:
+        await websocket.close(code=1008)
+        return
+
+    await websocket.accept()
+
+    try:
+        while True:
+            data = await websocket.receive_json()
+            msg_type = data.get("type")
+
+            if msg_type == "message":
+                content = data.get("content", "")
+
+                # Guardar mensaje del usuario
+                user_msg = {
+                    "id": str(uuid4()),
+                    "conversation_id": conversation_id,
+                    "role": "user",
+                    "content": content,
+                    "created_at": _now(),
+                }
+                await log_service.append_message(user_id, conversation_id, user_msg)
+
+                # Obtener historial reciente
+                history = await log_service.get_context(
+                    user_id, conversation_id, limit=HISTORY_LIMIT + 1
+                )
+                history = history[:-1]
+
+                # RAG: retrieval en thread para no bloquear el event loop
+                try:
+                    context_chunks = await asyncio.to_thread(retrieve_context, content)
+                except Exception as e:
+                    context_chunks = []
+                    print(f"⚠️ [ws] Error en retrieval: {e}")
+
+                # Streaming de tokens
+                full_answer = ""
+                try:
+                    async for delta in generate_answer_stream(content, context_chunks, history=history):
+                        if delta is None:
+                            break
+                        full_answer += delta
+                        await websocket.send_json({"type": "token", "content": delta})
+                except Exception as e:
+                    await websocket.send_json({"type": "error", "message": str(e)})
+                    print(f"⚠️ [ws] Error en generación: {e}")
+                    continue
+
+                # Guardar respuesta del asistente
+                assistant_msg_id = str(uuid4())
+                assistant_msg = {
+                    "id": assistant_msg_id,
+                    "conversation_id": conversation_id,
+                    "role": "assistant",
+                    "content": full_answer,
+                    "created_at": _now(),
+                }
+                await log_service.append_message(user_id, conversation_id, assistant_msg)
+
+                # Actualizar título con la primera pregunta
+                all_msgs = await log_service.get_context(user_id, conversation_id, limit=200)
+                if len(all_msgs) == 2:
+                    title = content[:50] + ("..." if len(content) > 50 else "")
+                    await col.update_one(
+                        {"id": conversation_id},
+                        {"$set": {"title": title, "updated_at": _now()}},
+                    )
+
+                await websocket.send_json({"type": "done", "message_id": assistant_msg_id})
+
+            elif msg_type in ("audio", "image"):
+                await websocket.send_json({"type": "error", "message": "not implemented yet"})
+
+    except WebSocketDisconnect:
+        pass

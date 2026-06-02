@@ -13,6 +13,7 @@ from database import engine, Base
 from auth.router import router as auth_router
 from config import validate_config
 from chat.router import router as chat_router
+from logs.log_router import router as logs_router
 
 
 @asynccontextmanager
@@ -81,6 +82,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 # Registrar routers
 app.include_router(auth_router)
 app.include_router(chat_router)
+app.include_router(logs_router, prefix="/logs", tags=["logs"])
 
 
 @app.get("/health")
