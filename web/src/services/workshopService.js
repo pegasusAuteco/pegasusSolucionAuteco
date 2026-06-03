@@ -2,9 +2,29 @@ import { apiFetch } from '../lib/fetch'
 
 export const workshopService = {
   createIngreso: async (data) => {
-    await apiFetch('/api/workshop/ingreso', {
+    return apiFetch('/api/workshop/ingreso', {
       method: 'POST',
       body: JSON.stringify(data),
+    })
+  },
+
+  updateIngreso: async (id, data) => {
+    return apiFetch(`/api/workshop/ingreso/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  },
+
+  finishRepair: async (id) => {
+    return apiFetch(`/api/workshop/ingreso/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ estado: 'completado' }),
+    })
+  },
+
+  deleteIngreso: async (id) => {
+    return apiFetch(`/api/workshop/ingreso/${id}`, {
+      method: 'DELETE',
     })
   },
 

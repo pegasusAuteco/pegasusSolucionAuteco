@@ -44,3 +44,22 @@ export async function updateMotorcycleStatus(id, status) {
 export async function completarMoto(id) {
   return updateMotorcycleStatus(id, 'completada')
 }
+
+export async function updateIngreso(id, data) {
+  const { data: row, error } = await supabase
+    .from('ingresos_taller')
+    .update(data)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return row
+}
+
+export async function deleteIngreso(id) {
+  const { error } = await supabase
+    .from('ingresos_taller')
+    .delete()
+    .eq('id', id)
+  if (error) throw error
+}

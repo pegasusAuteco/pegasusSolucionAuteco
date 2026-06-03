@@ -79,6 +79,17 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }) {
 
     if (initialData) {
       try {
+        await workshopService.updateIngreso(initialData.id, {
+          cliente: data.clientName,
+          documento_identidad: data.clientId,
+          celular: data.phone,
+          correo_electronico: data.email || undefined,
+          fecha_ingreso: data.entryDate,
+          marca_modelo: data.model,
+          placa: data.plate.toUpperCase(),
+          kilometraje: data.mileage,
+          observaciones: data.observations,
+        });
         updateEntry(initialData.id, {
           clientName: data.clientName,
           clientId: data.clientId,
@@ -92,12 +103,15 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }) {
         });
         addToast('success', 'Registro actualizado correctamente');
         if (onSuccess) onSuccess();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Error desconocido';
+        addToast('error', `❌ Error al actualizar: ${msg}`);
       } finally {
         setIsSubmitting(false);
       }
     } else {
       try {
-        await workshopService.createIngreso({
+        const row = await workshopService.createIngreso({
           cliente: data.clientName,
           documento_identidad: data.clientId,
           celular: data.phone,
@@ -110,6 +124,7 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }) {
         });
 
         registerEntry({
+          id: row.id,
           clientName: data.clientName,
           clientId: data.clientId,
           phone: data.phone,

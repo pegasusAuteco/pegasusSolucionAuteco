@@ -282,7 +282,8 @@ async def chat_websocket(
 
     conv = await col.find_one({"id": conversation_id, "user_id": user_id})
     if not conv:
-        await websocket.close(code=1008)
+        await websocket.accept()
+        await websocket.close(code=4004)
         return
 
     await websocket.accept()

@@ -27,7 +27,7 @@ const ChatContainer = () => {
   const addToast = useToastStore((s) => s.addToast);
   const userName = user?.name || user?.email || 'Mecánico';
 
-  const { activeConversationId, setActiveConversation, pendingChatInput, setPendingChatInput } = useChatUI();
+  const { activeConversationId, setActiveConversation, pendingChatInput, setPendingChatInput, initError, setInitError } = useChatUI();
   const { data: messages = [], isLoading: isLoadingMessages } = useMessages(activeConversationId);
   const sendMessage = useSendMessage();
   const createConversation = useCreateConversation();
@@ -35,7 +35,10 @@ const ChatContainer = () => {
   const queryClient = useQueryClient();
   const { streamingText, isStreaming, isConnected, sendMessage: wsSend } = useChatWebSocket(
     activeConversationId,
-    { onError: (msg) => addToast('error', msg) },
+    {
+      onError: (msg) => addToast('error', msg),
+      onConversationNotFound: () => setActiveConversation(null),
+    },
   );
 
   // Reinicia fallback al cambiar de conversación
@@ -147,6 +150,35 @@ const ChatContainer = () => {
   const isBusy = isLoading || isStreaming;
   const showWelcome = messages.length === 0 && !isStreaming;
   const canSend = (!!input.trim() || !!audioBlob || !!imagePreview) && !isBusy;
+
+  if (!activeConversationId) {
+    if (initError) {
+      return (
+        <div className="flex flex-col h-full bg-[#f8f9fa] dark:bg-gray-950 items-center justify-center gap-3 text-gray-400 dark:text-gray-500">
+          <span className="text-sm font-medium text-red-500 dark:text-red-400">No se pudo iniciar el chat</span>
+          <button
+            disabled={createConversation.isPending}
+            onClick={() => {
+              setInitError(false);
+              createConversation.mutate('Nuevo chat', {
+                onSuccess: (conv) => setActiveConversation(conv.id),
+                onError: () => setInitError(true),
+              });
+            }}
+            className="px-4 py-2 bg-auteco-red text-white text-sm font-bold rounded-xl hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {createConversation.isPending ? 'Reintentando...' : 'Reintentar'}
+          </button>
+        </div>
+      );
+    }
+    return (
+      <div className="flex flex-col h-full bg-[#f8f9fa] dark:bg-gray-950 items-center justify-center gap-2 text-gray-400 dark:text-gray-500">
+        <Loader2 className="w-6 h-6 animate-spin text-auteco-red" />
+        <span className="text-sm font-medium">Cargando conversaciones...</span>
+      </div>
+    );
+  }
 
   const chatInput = (formClass, inputClass) => (
     <div className={formClass}>

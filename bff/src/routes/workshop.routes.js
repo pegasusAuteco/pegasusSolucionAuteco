@@ -43,6 +43,28 @@ router.post('/ingreso', async (req, res) => {
   }
 })
 
+// PUT /workshop/ingreso/:id
+router.put('/ingreso/:id', async (req, res) => {
+  try {
+    const data = await workshopService.updateIngreso(req.params.id, req.body)
+    res.json(data)
+  } catch (err) {
+    console.error('[workshop] PUT /ingreso/:id', err)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// DELETE /workshop/ingreso/:id
+router.delete('/ingreso/:id', async (req, res) => {
+  try {
+    await workshopService.deleteIngreso(req.params.id)
+    res.status(204).end()
+  } catch (err) {
+    console.error('[workshop] DELETE /ingreso/:id', err)
+    res.status(500).json({ error: err.message })
+  }
+})
+
 // PUT /workshop/motorcycles/:id
 router.put('/motorcycles/:id', async (req, res) => {
   const { status } = req.body

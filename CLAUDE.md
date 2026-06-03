@@ -81,6 +81,9 @@ cd web && npm run dev
 | Analytics | `GET /analytics/me` y `/analytics/admin` no implementados en FastAPI |
 | `motorcycles` y `motorcycles_completed` | Tablas legacy en Supabase — deprecar cuando `ingresos_taller` las reemplace |
 | `web/src/services/workshopService.js` | Servicio frontend que llama directo a Supabase — revisar si sigue en uso |
+| WebSocket auth detection | ~~`!opened && code === 1006` eliminado~~ — resuelto en sesión 2026-06-03: BFF usa `wss.handleUpgrade + ws.close(4001)`, FastAPI usa `accept() + close(4004)`. Ver sección de debugging. |
+| `api/analytics/admin` | Devuelve 404 — no implementado en FastAPI |
+| Gestión de repuestos | `addPartToEntry` / `removePartFromEntry` solo en localStorage — falta tabla en Supabase |
 
 ## Rama de trabajo
 
@@ -530,3 +533,91 @@ docker compose exec backend python create_test_users.py
 | 6 | mecanico@pegasus.com | mecanico | TallerPassword123! |
 
 **Nota:** El enum `userrole` en PostgreSQL solo tenía `employee` y `admin`. Se agregaron `secretario` y `mecanico` con `ALTER TYPE ... ADD VALUE IF NOT EXISTS`.
+
+---
+
+## Sesión de debugging — Workshop + WebSocket (2026-06-03)
+
+### Bugs resueltos
+
+#### 1. Persistencia del workshop en Supabase
+
+- `createIngreso` ahora retorna la fila creada — antes el BFF descartaba la respuesta y el frontend generaba IDs locales con `crypto.randomUUID()`, causando IDs huérfanos que daban 404 al intentar actualizar o completar.
+- Nuevas operaciones conectadas al BFF: `updateIngreso` (PUT), `finishRepair` (PUT `estado=completado`), `deleteIngreso` (DELETE).
+- El ID real de Supabase fluye del backend a la cola local desde el momento del ingreso.
+
+#### 2. WebSocket del chat — códigos de cierre semánticos
+
+| Código | Significado | Acción en el frontend |
+|---|---|---|
+| `4001` | Sesión inválida/expirada (BFF) | `window.location.href = '/login'` |
+| `4004` | Conversación no existe (FastAPI) | `setActiveConversation(null)` → auto-recuperación |
+| `1000` | Cierre normal (fin de stream) | Sin acción |
+| `1006` / otros | Fallo de red transitorio | Reconecta hasta 3 intentos |
+
+**Regla crítica de FastAPI:** `close(code)` ANTES de `accept()` envía HTTP 403 al BFF (no un frame WS) — el código nunca llega al browser. Siempre llamar `accept()` primero, luego `close(code)`.
+
+```python
+# ✗ Mal — el código 4004 nunca llega al browser
+if not conv:
+    await websocket.close(code=4004)
+
+# ✓ Correcto
+if not conv:
+    await websocket.accept()
+    await websocket.close(code=4004)
+```
+
+El BFF proxy propaga `code` y `reason` de FastAPI al browser (antes los descartaba y enviaba siempre 1000).
+
+#### 3. Loop infinito de reconexión
+
+- **Causa:** `onopen` reseteaba `reconnectCountRef` a 0 antes de que FastAPI confirmara la conexión. El BFF acepta el handshake del browser con `wss.handleUpgrade` antes de hacer proxy a FastAPI — por eso `onopen` dispara aunque FastAPI luego rechace.
+- **Fix:** `stabilityTimerRef` — el contador solo se resetea si la conexión sigue abierta 3 segundos después de `onopen`. Si FastAPI cierra antes, el timer se cancela en `onclose` y el contador avanza normalmente hasta agotar `MAX_RECONNECT`.
+
+#### 4. Falsos positivos de redirect a login
+
+- Eliminado el heurístico `!opened && code === 1006` que expulsaba al usuario a `/login` en fallos de red transitorios (BFF lento, timeout).
+- Ahora solo el código explícito `4001` redirige a login — no hay ambigüedad.
+
+#### 5. UX — Pantalla de bienvenida percibida como "doble clic"
+
+- **Causa real:** el primer acceso a `/chat` usa React Query sin caché — `conversations === undefined` mientras carga, el `useEffect` de Layout sale sin setear `activeConversationId`, y `ChatContainer` mostraba pantalla vacía.
+- **Fix:** `ChatContainer` muestra spinner "Cargando conversaciones..." mientras `activeConversationId === null`, y estado de error con botón Reintentar si `createConversation` falla (via `initError` en `ChatContext`).
+- Toast de error del WS suprimido durante carga inicial — solo aparece tras agotar los 3 reintentos. El fallback HTTP POST cubre el resto silenciosamente.
+- `staleTime: 30_000` en `useConversations` para reducir el uso de caché stale.
+
+### Protección de sesión (doble capa)
+
+| Capa | Trigger | Acción |
+|---|---|---|
+| HTTP (`fetch.js`) | Respuesta 401 del BFF | Limpia localStorage + redirect `/login` |
+| WebSocket (`useChatWebSocket.js`) | Código WS `4001` del BFF | `window.location.href = '/login'` |
+
+El WS cubre el caso donde la sesión expira con el WebSocket ya conectado y no hay requests HTTP que activen el interceptor.
+
+### Cómo forzar expiración de sesión para tests
+
+Redis tiene volumen persistente (`redis_data:/data`) — `docker compose restart redis` NO borra sesiones. Para forzar:
+
+```bash
+# Borrar solo las keys sess:* (recomendado)
+docker compose exec redis redis-cli eval \
+  "local n=0; for _,k in ipairs(redis.call('keys','sess:*')) do redis.call('del',k); n=n+1 end; return n" 0
+
+# Verificar que quedó vacío
+docker compose exec redis redis-cli keys 'sess:*'
+```
+
+### Arquitectura real del frontend (corrección)
+
+- **Stack real:** React + Vite + Zustand + TanStack Query + Tailwind CSS
+- **Sesiones:** JWT nunca llega al browser — solo la cookie `connect.sid` httpOnly. El BFF guarda `{ jwt, user }` en Redis y lo lee en cada request/upgrade WS.
+
+### Pendientes conocidos (agregados en esta sesión)
+
+| Pendiente | Detalle |
+|---|---|
+| `api/analytics/admin` | Devuelve 404 — no implementado en FastAPI |
+| Gestión de repuestos | `addPartToEntry` / `removePartFromEntry` solo en estado local (localStorage) — falta tabla en Supabase |
+| WS close code deuda técnica | Ver entrada existente en tabla de pendientes |

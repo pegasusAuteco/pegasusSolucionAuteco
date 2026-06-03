@@ -6,6 +6,7 @@ export function useConversations() {
   return useQuery({
     queryKey: ['conversations'],
     queryFn: () => chatService.list(),
+    staleTime: 30_000,
   });
 }
 

@@ -28,7 +28,7 @@ const Layout = () => {
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
 
   const creatingConversation = useRef(false);
-  const { activeConversationId, setActiveConversation } = useChatUI();
+  const { activeConversationId, setActiveConversation, setInitError } = useChatUI();
   const { data: conversations } = useConversations();
   const createConversation = useCreateConversation();
   const renameConversation = useRenameConversation();
@@ -45,9 +45,13 @@ const Layout = () => {
       createConversation.mutate('Nuevo chat', {
         onSuccess: (conv) => {
           setActiveConversation(conv.id);
+          setInitError(false);
           creatingConversation.current = false;
         },
-        onError: () => { creatingConversation.current = false; },
+        onError: () => {
+          creatingConversation.current = false;
+          setInitError(true);
+        },
       });
     }
   }, [activeConversationId, conversations, setActiveConversation, createConversation]);

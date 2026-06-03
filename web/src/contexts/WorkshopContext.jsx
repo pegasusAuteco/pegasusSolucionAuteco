@@ -34,7 +34,7 @@ export function WorkshopProvider({ children }) {
   const registerEntry = useCallback((entryData) => {
     setQueue((prev) => [
       ...prev,
-      { ...entryData, id: crypto.randomUUID(), timestamp: Date.now(), status: 'pending', parts: [] },
+      { ...entryData, id: entryData.id ?? crypto.randomUUID(), timestamp: Date.now(), status: 'pending', parts: [] },
     ]);
   }, []);
 

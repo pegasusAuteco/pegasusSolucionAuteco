@@ -24,6 +24,7 @@ export function setupChatWsProxy(server, redisClient) {
   server.on('upgrade', async (req, socket, head) => {
     const url = req.url ?? ''
     console.log(`[ws-proxy] upgrade recibido — url: ${url}`)
+    console.log('[WS] upgrade request path:', req.url)
 
     if (!url.startsWith('/api/chat/ws/')) {
       console.log(`[ws-proxy] path no manejado — destruyendo socket`)
@@ -36,6 +37,7 @@ export function setupChatWsProxy(server, redisClient) {
     const rawSid = cookies['connect.sid']
     if (!rawSid) {
       console.warn('[ws-proxy] sin cookie connect.sid — destruyendo socket')
+      console.log('[WS] REJECT: no cookie')
       socket.destroy()
       return
     }
@@ -43,6 +45,7 @@ export function setupChatWsProxy(server, redisClient) {
     const sessionId = extractSessionId(rawSid)
     if (!sessionId) {
       console.warn('[ws-proxy] sessionId inválido — destruyendo socket')
+      console.log('[WS] REJECT: invalid sessionId')
       socket.destroy()
       return
     }
@@ -52,7 +55,8 @@ export function setupChatWsProxy(server, redisClient) {
       const raw = await redisClient.get(`sess:${sessionId}`)
       if (!raw) {
         console.warn(`[ws-proxy] sesión ${sessionId} no encontrada en Redis`)
-        socket.destroy()
+        console.log('[WS] REJECT: session not found in Redis')
+        wss.handleUpgrade(req, socket, head, (ws) => ws.close(4001, 'Session invalid'))
         return
       }
       jwt = JSON.parse(raw).jwt
@@ -64,9 +68,12 @@ export function setupChatWsProxy(server, redisClient) {
 
     if (!jwt) {
       console.warn('[ws-proxy] Sesión sin JWT — rechazando conexión')
-      socket.destroy()
+      console.log('[WS] REJECT: no JWT in session')
+      wss.handleUpgrade(req, socket, head, (ws) => ws.close(4001, 'Session invalid'))
       return
     }
+
+    console.log('[WS] ACCEPT: handshake ok')
 
     // ── Extraer conversationId del path ──────────────────────────────────────
     const conversationId = url.replace('/api/chat/ws/', '').split('?')[0]
@@ -130,8 +137,8 @@ export function setupChatWsProxy(server, redisClient) {
         if (ipConns.size === 0) connectionsByIp.delete(ip)
         if (backendWs.readyState !== WebSocket.CLOSED) backendWs.close()
       })
-      backendWs.on('close', () => {
-        if (browserWs.readyState === WebSocket.OPEN) browserWs.close()
+      backendWs.on('close', (code, reason) => {
+        if (browserWs.readyState === WebSocket.OPEN) browserWs.close(code, reason)
       })
 
       // Errores

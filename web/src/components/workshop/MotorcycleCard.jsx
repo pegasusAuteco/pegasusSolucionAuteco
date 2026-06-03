@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useWorkshop } from '@hooks/useWorkshop';
+import { useToastStore } from '../../store/toastStore';
 import { Clock, Wrench, Plus, CheckCircle2, Package, Edit, Trash2, FileText } from 'lucide-react';
 import { formatRelativeTime } from '../../utils/dates';
+import { workshopService } from '../../services/workshopService';
 import ReceptionForm from './ReceptionForm';
 
 export default function MotorcycleCard({ entry }) {
@@ -11,6 +13,7 @@ export default function MotorcycleCard({ entry }) {
   const [isEditing, setIsEditing] = useState(false);
 
   const { addPartToEntry, removeEntry, removePartFromEntry, finishRepair } = useWorkshop();
+  const addToast = useToastStore((s) => s.addToast);
 
   useEffect(() => {
     const updateTimer = () => {
@@ -166,7 +169,14 @@ export default function MotorcycleCard({ entry }) {
               Editar
             </button>
             <button
-              onClick={() => finishRepair(entry.id)}
+              onClick={async () => {
+                try {
+                  await workshopService.finishRepair(entry.id)
+                  finishRepair(entry.id)
+                } catch (err) {
+                  addToast('error', `❌ Error al completar: ${err?.response?.data?.detail ?? err.message ?? 'Error desconocido'}`)
+                }
+              }}
               className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50 rounded-lg transition-colors"
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
@@ -187,9 +197,14 @@ export default function MotorcycleCard({ entry }) {
               <span className="z-10 drop-shadow-sm tracking-wide">WhatsApp</span>
             </button>
             <button
-              onClick={() => {
+              onClick={async () => {
                 if (confirm('¿Seguro que deseas cerrar este pedido? El registro se eliminará de la lista.')) {
-                  removeEntry(entry.id);
+                  try {
+                    await workshopService.deleteIngreso(entry.id)
+                    removeEntry(entry.id)
+                  } catch (err) {
+                    addToast('error', `❌ Error al cerrar pedido: ${err?.response?.data?.detail ?? err.message ?? 'Error desconocido'}`)
+                  }
                 }
               }}
               className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-sm font-bold text-white bg-gray-600 hover:bg-gray-700 rounded-lg transition-colors shadow-sm"
