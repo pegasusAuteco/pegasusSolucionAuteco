@@ -1,98 +1,152 @@
-# Guía de Instalación y Configuración - Pegasus Taller
+# Guía de Instalación y Configuración — MotorConnect
 
-El entorno de Pegasus ha evolucionado hacia una **arquitectura local-first**. Esto significa que todos los servicios principales (PostgreSQL, MongoDB, Redis, Qdrant y FastAPI Backend) corren localmente en contenedores Docker para sortear bloqueos de red y firewalls (como los de la academia). Las únicas dependencias en la nube son Supabase (para tablas y Storage de imágenes) y OpenAI/Groq.
-
-Hay dos formas de correr el proyecto: **con Docker** (recomendado y oficial) o **sin Docker** (manual, solo para pruebas rápidas del backend).
+Todos los servicios corren localmente en contenedores Docker. Las únicas dependencias externas son Supabase (tablas de negocio) y OpenAI.
 
 ---
 
-## Opción A — Con Docker (Recomendado)
+## Requisitos
 
-### Requisitos
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) instalado y corriendo en tu máquina.
-- Clonar el repositorio.
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) instalado y corriendo
+- Git
 
-### Pasos
+---
 
-**1. Archivo de Variables de Entorno (`.env`)**
-Debes tener el archivo `.env` configurado en la raíz del proyecto (al nivel de `docker-compose.yaml`).
-Si no lo tienes, solicítalo al líder técnico o usa el `.env.example`.
-Asegúrate de que tus variables apunten a los contenedores locales, por ejemplo:
-```env
-DATABASE_URL=postgresql+asyncpg://motorconnect:localdev123@db:5432/motorconnect_db
-MONGO_URI=mongodb://motorconnect:localdev123@mongodb:27017/motorconnect_logs?authSource=admin
-REDIS_URL=redis://redis:6379/0
+## Pasos (computador nuevo)
+
+### 1. Clonar el repositorio
+
+```bash
+git clone <url-del-repo>
+cd pegasusSolucionAuteco
 ```
 
-**2. Construir y Arrancar la Infraestructura**
-Ejecuta el siguiente comando para levantar la base de datos (Postgres), MongoDB, Redis, Qdrant, Backend y Frontend:
+### 2. Configurar variables de entorno
+
+```bash
+cp .env.example .env
+```
+
+Edita `.env` y completa estas variables (las demás vienen bien por defecto):
+
+| Variable | Descripción |
+|---|---|
+| `SUPABASE_URL` | URL del proyecto Supabase |
+| `SUPABASE_SERVICE_KEY` | Clave `service_role` de Supabase |
+| `VITE_SUPABASE_URL` | La misma URL de Supabase (expuesta al browser) |
+| `VITE_SUPABASE_KEY` | Clave `anon/public` de Supabase |
+| `OPENAI_API_KEY` | Clave de API de OpenAI |
+| `JWT_SECRET` | String aleatorio, mínimo 32 caracteres |
+| `SESSION_SECRET` | String aleatorio, mínimo 32 caracteres |
+
+### 3. Levantar todos los servicios
+
 ```bash
 docker compose up -d --build
 ```
-> **Nota:** Si tienes un volumen de MongoDB corrupto o de una versión anterior que te genera error "timeout" en el chat, asegúrate de recrear los contenedores limpiamente con:
-> `docker compose up -d --force-recreate mongodb backend`
 
-**3. Crear el Usuario Administrador (Solo la primera vez)**
-Como la base de datos de usuarios ahora vive localmente en tu contenedor de Postgres, debes sembrar el usuario principal:
+Espera ~30 segundos a que los healthchecks pasen. Puedes verificar con:
+
 ```bash
-docker exec motorconnect-backend python3 create_admin.py
+docker compose ps
 ```
-Credenciales por defecto:
-- Email: `admin@pegasus.com`
-- Password: `AdminPassword123!`
 
-**4. Acceso a la Aplicación**
-- **Frontend (Taller, Chat y Mecánicos):** http://localhost:5173
-- **Documentación API Backend:** http://localhost:8001/docs
+Todos los servicios deben estar en estado `healthy` antes de continuar.
+
+### 4. Agregar roles al enum de PostgreSQL (solo primera vez)
+
+```bash
+docker compose exec db psql -U motorconnect -d motorconnect_db -c "
+ALTER TYPE userrole ADD VALUE IF NOT EXISTS 'secretario';
+ALTER TYPE userrole ADD VALUE IF NOT EXISTS 'mecanico';
+"
+```
+
+### 5. Crear usuarios de prueba (solo primera vez)
+
+```bash
+# Usuario admin
+docker compose exec backend python create_admin.py
+
+# Usuarios secretario y mecánico
+docker compose exec backend python create_test_users.py
+```
 
 ---
 
-## Opción B — Desarrollo Manual (Sin Docker)
-*Solo si estás editando intensamente el frontend y deseas usar la infraestructura de Docker para el backend pero el frontend corriendo nativo con Vite.*
+## URLs de acceso
 
-1. Levanta los servicios base (Base de datos, Mongo, Redis, Backend) usando Docker:
-```bash
-docker compose up -d db mongodb redis qdrant backend
-```
+| Servicio | URL |
+|---|---|
+| Frontend | http://localhost:5173 |
+| BFF (Express) | http://localhost:3000 |
+| Backend FastAPI docs | http://localhost:8000/docs |
 
-2. Abre una terminal nueva en la carpeta `web/` e instala Node:
+---
+
+## Credenciales de prueba
+
+| Rol | Email | Password |
+|---|---|---|
+| admin | admin@pegasus.com | `AdminPassword123!` |
+| secretario | secretario@pegasus.com | `TallerPassword123!` |
+| mecanico | mecanico@pegasus.com | `TallerPassword123!` |
+
+---
+
+## Desarrollo del frontend fuera de Docker (opcional)
+
+Si quieres hot-reload nativo de Vite sin reconstruir la imagen:
+
 ```bash
+# Levantar solo la infraestructura (sin el contenedor web)
+docker compose up -d db mongodb redis qdrant backend bff
+
+# En otra terminal
 cd web
 npm install
 npm run dev
 ```
 
-La app estará disponible en http://localhost:5173 con Hot-Reloading, conectándose al backend de Docker que expone el puerto `8001`.
+La app estará en http://localhost:5174 (Vite elige el puerto disponible).
 
 ---
 
-## Comandos Útiles de Mantenimiento
+## Comandos útiles
 
 ```bash
-# Ver logs del backend para depurar fallos en el chat o en login
+# Ver logs en tiempo real
+docker compose logs -f
+
+# Ver logs de un servicio específico
 docker compose logs -f backend
+docker compose logs -f bff
 
-# Ver logs del frontend (Nginx)
-docker compose logs -f web
-
-# Reconstruir SOLO el backend (si hiciste cambios en Python)
+# Reconstruir un solo servicio
 docker compose up --build -d backend
+docker compose up --build -d bff
 
-# Reconstruir SOLO el frontend (si hiciste cambios en React)
-docker compose up --build -d web
-
-# Detener todos los contenedores y liberar la red
+# Detener todo
 docker compose down
+
+# Detener todo y borrar volúmenes (resetea las bases de datos)
+docker compose down -v
 ```
 
-## Solución de Problemas Comunes
+---
 
-1. **Error 502 Bad Gateway en Frontend:**
-   Ocurre si reiniciaste el contenedor del backend pero dejaste vivo el contenedor del frontend (`web`). Nginx almacena en caché la IP vieja del backend.
-   *Solución:* Reinicia Nginx con `docker compose restart web`.
+## Solución de problemas
 
-2. **El Chat carga infinito o se queda en blanco (Timeout):**
-   Ocurre si MongoDB falló al iniciar o tiene un volumen corrupto antiguo. 
-   *Solución:* Elimina el volumen viejo o asegúrate de forzar la recreación: `docker compose up -d --force-recreate mongodb backend`.
+**El chat se queda cargando o da timeout:**
+MongoDB puede haber fallado al iniciar o tener un volumen corrupto.
+```bash
+docker compose up -d --force-recreate mongodb backend
+```
 
+**Error 401 en todas las rutas del chat:**
+El BFF no está reenviando el JWT a FastAPI. Verifica que `JWT_SECRET` sea idéntico en `.env` para ambos servicios.
 
+**Vite arranca en el puerto 5174 en vez de 5173:**
+Ocurre cuando el frontend corre fuera de Docker y el puerto 5173 está ocupado. Actualiza `CORS_ORIGIN=http://localhost:5174` en `.env` y reinicia el BFF:
+```bash
+docker compose restart bff
+```
