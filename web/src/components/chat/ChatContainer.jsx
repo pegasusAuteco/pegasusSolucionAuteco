@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import ChatBubble from './ChatBubble';
 import { Send, Loader2, Mic, MicOff, ImagePlus, X } from 'lucide-react';
 import { useChatUI } from '@hooks/useChatUI';
@@ -112,7 +112,6 @@ const ChatContainer = () => {
   const clearImage = () => { setImagePreview(null); setImageName(null); };
 
   const doSend = useCallback((convId, message) => {
-    console.log('[doSend] content:', message, 'conversationId:', convId, 'ws:', isConnected && !usePostFallback)
     if (isConnected && !usePostFallback) {
       wsSend(message);
     } else {
@@ -135,7 +134,6 @@ const ChatContainer = () => {
     clearAudio();
     clearImage();
     if (activeConversationId) {
-      console.log('[handleSend] message:', message, 'type:', typeof message)
       doSend(activeConversationId, message);
     } else {
       createConversation.mutate(undefined, {

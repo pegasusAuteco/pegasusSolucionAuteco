@@ -6,7 +6,6 @@ async function parseWsMessage(data) {
     const text = data instanceof Blob ? await data.text() :
                  data instanceof ArrayBuffer ? new TextDecoder().decode(data) :
                  String(data)
-    console.log('[ws] texto parseado:', text)
     return JSON.parse(text)
   } catch {
     return null
@@ -47,7 +46,6 @@ export function useChatWebSocket(conversationId, { onError, onConversationNotFou
     }
 
     ws.onmessage = async (event) => {
-      console.log('[ws] mensaje recibido:', event.data)
       if (!mountedRef.current) return
 
       const msg = await parseWsMessage(event.data)
