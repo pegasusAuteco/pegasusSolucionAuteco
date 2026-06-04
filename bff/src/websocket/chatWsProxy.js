@@ -23,7 +23,6 @@ function extractSessionId(rawSid) {
 export function setupChatWsProxy(server, redisClient) {
   server.on('upgrade', async (req, socket, head) => {
     const url = req.url ?? ''
-    console.log(`[ws-proxy] upgrade recibido — url: ${url}`)
 
     if (!url.startsWith('/api/chat/ws/')) {
       console.log(`[ws-proxy] path no manejado — destruyendo socket`)

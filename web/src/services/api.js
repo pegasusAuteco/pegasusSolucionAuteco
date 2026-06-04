@@ -35,7 +35,6 @@ export const chatService = {
   getMessages: (conversationId) =>
     apiFetch(`${baseURL}/chat/conversations/${conversationId}/messages`),
   sendMessage: (conversationId, content) => {
-    console.log('[chat] sending:', { conversationId, content })
     return apiFetch(`${baseURL}/chat/conversations/${conversationId}/messages`, {
       method: 'POST',
       body: JSON.stringify({ content }),

@@ -114,7 +114,6 @@ async def delete_all_conversations(
             await log_service.close_session(user_id, doc["id"])
         except Exception:
             pass
-    print(f"🗑️ {count} conversaciones eliminadas para el usuario {user_id}")
     return {"deleted": count}
 
 

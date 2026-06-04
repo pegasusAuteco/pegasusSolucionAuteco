@@ -13,8 +13,6 @@ const fastapiProxy = createProxyMiddleware({
   pathRewrite: { '^/api': '' },
   on: {
     proxyReq: (proxyReq, req) => {
-      console.log('[proxy] jwt en sesión:', !!req.session?.jwt)
-      console.log('[proxy] headers enviados a FastAPI:', proxyReq.getHeaders())
       if (req.session?.jwt) {
         proxyReq.setHeader('Authorization', `Bearer ${req.session.jwt}`)
       }

@@ -67,7 +67,6 @@ export function useDeleteAllConversations() {
   return useMutation({
     mutationFn: () => chatService.removeAll(),
     onSuccess: (data) => {
-      console.log(`🗑️ ${data.deleted} conversaciones eliminadas`);
       setActiveConversation(null);
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
     },
