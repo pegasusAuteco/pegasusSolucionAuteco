@@ -43,6 +43,8 @@ lerna-debug.log*
 Thumbs.db
 
 activities.txt
+cookies.txt
+test_*.py
 .claude
 documents/
 
