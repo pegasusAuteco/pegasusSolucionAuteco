@@ -130,7 +130,7 @@ services:
     image: node:20-alpine
     container_name: motorconnect-bff
     working_dir: /app
-    command: sh -c "npm install && npm start"
+    command: sh -c "npm ci && npm start"
     environment:
       SUPABASE_URL: ${SUPABASE_URL:-}
       SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY:-}
