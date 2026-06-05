@@ -31,4 +31,11 @@ export const workshopService = {
   getMotosMecanico: async () => {
     return apiFetch('/api/workshop/mechanic-queue')
   },
+
+  notifyWhatsApp: async (id, parts = []) => {
+    return apiFetch(`/api/workshop/motorcycles/${id}/whatsapp`, {
+      method: 'POST',
+      body: JSON.stringify({ parts })
+    })
+  },
 }
