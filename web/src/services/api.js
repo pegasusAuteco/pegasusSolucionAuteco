@@ -41,6 +41,16 @@ export const chatService = {
       timeout: 120_000,
     })
   },
+  sendVoice: (audioBlob, conversationId = null) => {
+    const form = new FormData()
+    form.append('audio', audioBlob, 'audio.webm')
+    if (conversationId) form.append('conversation_id', conversationId)
+    return apiFetch(`${baseURL}/voice/transcribe`, {
+      method: 'POST',
+      body: form,
+      timeout: 90_000,
+    })
+  },
 }
 
 export const historyService = {

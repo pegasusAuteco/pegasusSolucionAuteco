@@ -22,6 +22,10 @@ const ChatContainer = () => {
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
   const fileInputRef = useRef(null);
+  const cancellingRef = useRef(false);
+  const isTouchRef = useRef(false);
+  const btnRef = useRef(null);
+  const releaseHandlerRef = useRef(null);
 
   const user = useAuthStore((s) => s.user);
   const addToast = useToastStore((s) => s.addToast);
@@ -68,14 +72,32 @@ const ChatContainer = () => {
   }, [messages, isLoading, streamingText]);
 
 
+  const pickMimeType = () => {
+    const candidates = [
+      'audio/webm;codecs=opus',
+      'audio/ogg;codecs=opus',
+      'audio/webm',
+      'audio/mp4',
+    ];
+    return candidates.find(t => MediaRecorder.isTypeSupported(t)) || '';
+  };
+
   const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+      const mimeType = pickMimeType();
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
       chunksRef.current = [];
       recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       recorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        if (cancellingRef.current) {
+          cancellingRef.current = false;
+          stream.getTracks().forEach(t => t.stop());
+          return;
+        }
+        const blob = new Blob(chunksRef.current, { type: mimeType || 'audio/webm' });
         setAudioBlob(blob);
         setAudioUrl(URL.createObjectURL(blob));
         stream.getTracks().forEach(t => t.stop());
@@ -92,6 +114,60 @@ const ChatContainer = () => {
     mediaRecorderRef.current?.stop();
     setIsRecording(false);
   }, []);
+
+  // Limpia el listener global si el componente se desmonta mientras graba
+  useEffect(() => {
+    return () => {
+      if (releaseHandlerRef.current) {
+        window.removeEventListener('mouseup', releaseHandlerRef.current);
+        window.removeEventListener('touchend', releaseHandlerRef.current);
+        window.removeEventListener('touchcancel', releaseHandlerRef.current);
+        releaseHandlerRef.current = null;
+      }
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        cancellingRef.current = true;
+        mediaRecorderRef.current.stop();
+      }
+    };
+  }, []);
+
+  const handleMicPress = (e) => {
+    if (e.type === 'touchstart') {
+      e.preventDefault();
+      isTouchRef.current = true;
+    } else if (isTouchRef.current) {
+      return; // descarta el mousedown sintético que el browser emite tras touchstart
+    }
+
+    const handleRelease = (ev) => {
+      window.removeEventListener('mouseup', handleRelease);
+      window.removeEventListener('touchend', handleRelease);
+      window.removeEventListener('touchcancel', handleRelease);
+      releaseHandlerRef.current = null;
+
+      if (ev.type === 'touchcancel') {
+        cancellingRef.current = true;
+      } else {
+        const x = ev.type.startsWith('touch') ? ev.changedTouches[0].clientX : ev.clientX;
+        const y = ev.type.startsWith('touch') ? ev.changedTouches[0].clientY : ev.clientY;
+        if (btnRef.current) {
+          const r = btnRef.current.getBoundingClientRect();
+          if (x < r.left || x > r.right || y < r.top || y > r.bottom) {
+            cancellingRef.current = true;
+          }
+        }
+      }
+
+      stopRecording();
+    };
+
+    releaseHandlerRef.current = handleRelease;
+    window.addEventListener('mouseup', handleRelease);
+    window.addEventListener('touchend', handleRelease);
+    window.addEventListener('touchcancel', handleRelease);
+
+    startRecording();
+  };
 
   const clearAudio = useCallback(() => {
     setAudioBlob(null);
@@ -213,10 +289,12 @@ const ChatContainer = () => {
         <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
 
         <button
+          ref={btnRef}
           type="button"
-          onClick={() => isRecording ? stopRecording() : startRecording()}
+          onMouseDown={handleMicPress}
+          onTouchStart={handleMicPress}
           disabled={isBusy}
-          title={isRecording ? 'Detener grabación' : 'Grabar audio'}
+          title={isRecording ? 'Suelta para enviar' : 'Mantén presionado para grabar'}
           className={`rounded-xl p-2 transition-colors shrink-0 ${
             isRecording ? 'animate-pulse bg-red-100 text-red-600 hover:bg-red-200'
             : audioBlob ? 'bg-green-100 text-green-600 hover:bg-green-200'
