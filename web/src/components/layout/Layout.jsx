@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import ChatContainer from '../chat/ChatContainer';
 import MotorcycleList from '../inventory/MotorcycleList';
+import ThemeToggle from '../shared/ThemeToggle';
 import { MessageSquare, Plus, LogOut, Bike, X, BarChart3, Wrench } from 'lucide-react';
 import { useAuthStore } from '@store/authStore';
 import { useNavigate } from 'react-router-dom';
@@ -206,6 +207,7 @@ const Layout = () => {
           )}
         </div>
         <div className="flex items-center gap-4 text-sm font-medium">
+          <ThemeToggle />
           <span className="hidden sm:inline text-gray-600 dark:text-gray-300">
             Hola, {user?.name || 'Mecánico'}
           </span>

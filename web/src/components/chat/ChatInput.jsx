@@ -76,7 +76,7 @@ export default function ChatInput({ onSend, disabled }) {
   const canSend = (!!input.trim() || !!audioBlob || !!imagePreview) && !disabled
 
   return (
-    <div className="border-t bg-white px-4 pt-2 pb-4">
+    <div className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 pt-2 pb-4 transition-colors">
       {(imagePreview || audioUrl) && (
         <div className="mb-2 flex flex-wrap gap-2">
           {imagePreview && (
@@ -107,8 +107,8 @@ export default function ChatInput({ onSend, disabled }) {
           title="Adjuntar imagen"
           className={`rounded-xl p-2 transition-colors ${
             imagePreview
-              ? 'bg-green-100 text-green-600 hover:bg-green-200'
-              : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              ? 'bg-green-100 text-green-600 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50'
+              : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
           } disabled:opacity-40`}
         >
           <ImagePlus className="h-5 w-5" />
@@ -128,10 +128,10 @@ export default function ChatInput({ onSend, disabled }) {
           title={isRecording ? 'Detener grabación' : 'Grabar audio'}
           className={`rounded-xl p-2 transition-colors ${
             isRecording
-              ? 'animate-pulse bg-red-100 text-red-600 hover:bg-red-200'
+              ? 'animate-pulse bg-red-100 text-red-600 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50'
               : audioBlob
-              ? 'bg-green-100 text-green-600 hover:bg-green-200'
-              : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              ? 'bg-green-100 text-green-600 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50'
+              : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
           } disabled:opacity-40`}
         >
           {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
@@ -143,7 +143,7 @@ export default function ChatInput({ onSend, disabled }) {
           onChange={(e) => setInput(e.target.value)}
           placeholder={isRecording ? '🔴 Grabando...' : 'Escribe tu mensaje...'}
           disabled={disabled}
-          className="flex-1 rounded-xl border border-gray-300 px-4 py-2 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 disabled:opacity-50"
+          className="flex-1 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 disabled:opacity-50 transition-colors"
         />
 
         <button

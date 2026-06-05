@@ -4,6 +4,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App'
 import './index.css'
 
+const savedTheme = localStorage.getItem('theme') || 'light'
+if (savedTheme === 'dark') {
+  document.documentElement.classList.add('dark')
+}
+
 const queryClient = new QueryClient()
 
 ReactDOM.createRoot(document.getElementById('root')).render(

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { PenTool, ClipboardEdit, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import ThemeToggle from '../components/shared/ThemeToggle';
 import ReceptionForm from '../components/workshop/ReceptionForm';
 import MechanicDashboard from '../components/workshop/MechanicDashboard';
 
@@ -12,13 +13,16 @@ export default function WorkshopPage() {
     <div className="min-h-screen bg-bg-light dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans flex flex-col transition-colors duration-300">
       <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-6 shadow-sm shrink-0 transition-colors duration-300">
         <div className="max-w-6xl mx-auto flex flex-col gap-4">
-          <button
-            onClick={() => navigate('/chat')}
-            className="flex items-center gap-2 text-sm text-gray-500 hover:text-auteco-blue transition-colors w-fit font-medium"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Volver a Inicio
-          </button>
+          <div className="flex items-center justify-between w-full">
+            <button
+              onClick={() => navigate('/chat')}
+              className="flex items-center gap-2 text-sm text-gray-500 hover:text-auteco-blue transition-colors w-fit font-medium"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Volver a Inicio
+            </button>
+            <ThemeToggle />
+          </div>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl font-black text-auteco-blue dark:text-white tracking-tight uppercase">

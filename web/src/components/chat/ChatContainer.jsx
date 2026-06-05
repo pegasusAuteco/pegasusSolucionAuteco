@@ -205,7 +205,7 @@ const ChatContainer = () => {
           disabled={isBusy}
           title="Adjuntar imagen"
           className={`rounded-xl p-2 transition-colors shrink-0 ${
-            imagePreview ? 'bg-green-100 text-green-600 hover:bg-green-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+            imagePreview ? 'bg-green-100 text-green-600 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50' : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 shadow-sm'
           } disabled:opacity-40`}
         >
           <ImagePlus className="h-5 w-5" />
@@ -218,9 +218,9 @@ const ChatContainer = () => {
           disabled={isBusy}
           title={isRecording ? 'Detener grabación' : 'Grabar audio'}
           className={`rounded-xl p-2 transition-colors shrink-0 ${
-            isRecording ? 'animate-pulse bg-red-100 text-red-600 hover:bg-red-200'
-            : audioBlob ? 'bg-green-100 text-green-600 hover:bg-green-200'
-            : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+            isRecording ? 'animate-pulse bg-red-100 text-red-600 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50'
+            : audioBlob ? 'bg-green-100 text-green-600 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50'
+            : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 shadow-sm'
           } disabled:opacity-40`}
         >
           {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
