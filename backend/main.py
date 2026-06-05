@@ -14,11 +14,13 @@ from auth.router import router as auth_router
 from config import validate_config
 from chat.router import router as chat_router
 from logs.log_router import router as logs_router
+from voice.router import router as voice_router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from auth.models import User
+    from models.audio_message import AudioMessage
     from logs.connections import get_redis, get_mongo_db
     from logs.log_service import ConversationLogService
 
@@ -83,6 +85,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 app.include_router(auth_router)
 app.include_router(chat_router)
 app.include_router(logs_router, prefix="/logs", tags=["logs"])
+app.include_router(voice_router)
 
 
 @app.get("/health")

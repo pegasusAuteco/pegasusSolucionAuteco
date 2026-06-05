@@ -30,3 +30,5 @@ class MessageResponse(BaseModel):
     role: str   # 'user' | 'assistant'
     content: str
     created_at: str
+    audio_id: str | None = None
+    message_type: str | None = None

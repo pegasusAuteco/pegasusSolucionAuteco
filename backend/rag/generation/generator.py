@@ -8,6 +8,15 @@ from config import OPENAI_API_KEY, LLM_MODEL
 _openai_client: OpenAI | None = None
 _async_openai_client: AsyncOpenAI | None = None
 
+VOICE_MODE_INSTRUCTION = (
+    "Estás respondiendo por voz; tu respuesta será leída en "
+    "voz alta. Responde en prosa hablada natural, sin markdown, "
+    "sin listas con viñetas, sin símbolos ni numeración escrita. "
+    "Sé conciso en preguntas simples y explica paso a paso en "
+    "voz corrida cuando sea un procedimiento, como si se lo "
+    "explicaras a un compañero mecánico por teléfono."
+)
+
 SYSTEM_PROMPT = """Eres Pegasus, asistente técnico especializado en motocicletas de Auteco Mobility.
 
 Tu función es ayudar a usuarios y mecánicos con:
@@ -125,11 +134,13 @@ def generate_answer(
     query: str,
     context_chunks: list[str],
     history: list[dict] | None = None,
+    voice_mode: bool = False,
 ) -> str:
     client = _get_openai()
     user_prompt = build_rag_prompt(query, context_chunks)
 
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    system_content = SYSTEM_PROMPT + "\n\n" + VOICE_MODE_INSTRUCTION if voice_mode else SYSTEM_PROMPT
+    messages = [{"role": "system", "content": system_content}]
 
     if history:
         for msg in history:

@@ -19,6 +19,12 @@ class Settings(BaseSettings):
     LLM_MODEL: str = "gpt-4o-mini"
     EMBEDDING_MODEL: str = "text-embedding-3-small"
 
+    # === VOICE / TTS ===
+    TTS_PROVIDER: str = "openai"
+    OPENAI_TTS_VOICE: str = "nova"
+    ELEVENLABS_API_KEY: str = ""
+    ELEVENLABS_VOICE_ID: str = ""
+
     # === VECTOR STORE (Supabase table) ===
     VECTOR_TABLE: str = "manuales_chunks"
     VECTOR_MATCH_COUNT: int = 5
