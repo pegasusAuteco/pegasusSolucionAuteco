@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, lazy, Suspense } from 'react';
 import ChatContainer from '../chat/ChatContainer';
 import MotorcycleList from '../inventory/MotorcycleList';
 import ThemeToggle from '../shared/ThemeToggle';
@@ -10,7 +10,7 @@ import {
   useConversations, useCreateConversation, useRenameConversation,
   useDeleteConversation, useDeleteAllConversations,
 } from '@hooks/useChat';
-import AdminPage from '@pages/AdminPage';
+const AdminPage = lazy(() => import('@pages/AdminPage'));
 import CompactMechanicQueue from '../workshop/CompactMechanicQueue';
 
 const Layout = () => {
@@ -273,7 +273,22 @@ const Layout = () => {
             )}
           </div>
           <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-950">
-            {activePanelDesktop === 'metrics' && isAdmin && <AdminPage />}
+            {activePanelDesktop === 'metrics' && isAdmin && (
+              <Suspense fallback={
+                <div className="flex-1 p-6 animate-pulse">
+                  <div className="h-8 w-64 bg-gray-200 dark:bg-gray-800 rounded mb-8"></div>
+                  <div className="h-32 bg-gray-200 dark:bg-gray-800 rounded-2xl mb-6"></div>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+                    <div className="h-28 bg-gray-200 dark:bg-gray-800 rounded-xl"></div>
+                    <div className="h-28 bg-gray-200 dark:bg-gray-800 rounded-xl"></div>
+                    <div className="h-28 bg-gray-200 dark:bg-gray-800 rounded-xl"></div>
+                    <div className="h-28 bg-gray-200 dark:bg-gray-800 rounded-xl"></div>
+                  </div>
+                </div>
+              }>
+                <AdminPage />
+              </Suspense>
+            )}
             {activePanelDesktop === 'inventory' && <MotorcycleList />}
             {activePanelDesktop === 'queue' && <CompactMechanicQueue isGrid={true} />}
           </div>

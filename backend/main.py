@@ -14,6 +14,9 @@ from auth.router import router as auth_router
 from config import validate_config
 from chat.router import router as chat_router
 from logs.log_router import router as logs_router
+from analytics.router import router as analytics_router
+from admin.router import router as admin_router
+from admin.manuals_router import router as manuals_router
 
 
 @asynccontextmanager
@@ -83,6 +86,9 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 app.include_router(auth_router)
 app.include_router(chat_router)
 app.include_router(logs_router, prefix="/logs", tags=["logs"])
+app.include_router(analytics_router, prefix="/analytics", tags=["analytics"])
+app.include_router(admin_router, prefix="/admin", tags=["admin"])
+app.include_router(manuals_router, prefix="/admin", tags=["admin", "manuals"])
 
 
 @app.get("/health")

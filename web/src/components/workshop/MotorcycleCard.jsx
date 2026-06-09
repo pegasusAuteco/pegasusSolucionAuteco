@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useWorkshop } from '@hooks/useWorkshop';
 import { useToastStore } from '../../store/toastStore';
-import { Clock, Wrench, Plus, CheckCircle2, Package, Edit, Trash2, FileText } from 'lucide-react';
+import { Clock, Wrench, Plus, CheckCircle2, Package, Edit, Trash2, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 import { formatRelativeTime } from '../../utils/dates';
 import { workshopService } from '../../services/workshopService';
 import ReceptionForm from './ReceptionForm';
@@ -12,6 +12,7 @@ export default function MotorcycleCard({ entry }) {
   const [timeElapsed, setTimeElapsed] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [partsExpanded, setPartsExpanded] = useState(false);
 
   const { addPartToEntry, removeEntry, removePartFromEntry, finishRepair } = useWorkshop();
   const addToast = useToastStore((s) => s.addToast);
@@ -131,7 +132,7 @@ export default function MotorcycleCard({ entry }) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                  {entry.parts.map((part) => (
+                  {entry.parts.slice(0, partsExpanded ? undefined : 2).map((part) => (
                     <tr key={part.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors text-gray-700 dark:text-gray-300">
                       <td className="px-3 py-2 font-medium flex items-center gap-2">
                         <Package className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
@@ -150,6 +151,25 @@ export default function MotorcycleCard({ entry }) {
                   ))}
                 </tbody>
               </table>
+              {entry.parts.length > 2 && (
+                <button
+                  type="button"
+                  onClick={() => setPartsExpanded(!partsExpanded)}
+                  className="w-full py-2 flex items-center justify-center gap-1.5 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 text-xs font-semibold text-gray-500 transition-colors border-t border-gray-100 dark:border-gray-800"
+                >
+                  {partsExpanded ? (
+                    <>
+                      <ChevronUp className="w-4 h-4" />
+                      Mostrar menos
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="w-4 h-4" />
+                      Ver {entry.parts.length - 2} más
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           ) : (
             <p className="text-xs text-gray-400 dark:text-gray-500 italic text-center py-2">

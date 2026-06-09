@@ -53,3 +53,31 @@ export const analyticsService = {
   myStats: () => apiFetch(`${baseURL}/analytics/me`),
   adminStats: () => apiFetch(`${baseURL}/analytics/admin`),
 }
+
+export const adminService = {
+  getUsers: () => apiFetch(`${baseURL}/admin/users`),
+  updateRole: (userId, role) =>
+    apiFetch(`${baseURL}/admin/users/${userId}/role`, {
+      method: 'PATCH',
+      body: JSON.stringify({ role }),
+    }),
+  getCatalogManuals: () => apiFetch(`${baseURL}/admin/manuals`),
+  uploadManual: async (formData) => {
+    // Para FormData NO enviamos el header Content-Type en apiFetch
+    const token = localStorage.getItem('jwt')
+    const headers = {}
+    if (token) headers['Authorization'] = `Bearer ${token}`
+    
+    const response = await fetch(`${baseURL}/admin/manuals`, {
+      method: 'POST',
+      headers,
+      body: formData
+    })
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.detail || errorData.error || 'Error en la petición')
+    }
+    return response.json()
+  }
+}
