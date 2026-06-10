@@ -1,9 +1,18 @@
+import VoiceMessagePlayer from './VoiceMessagePlayer';
+
+function isVeryRecent(createdAt) {
+  return Date.now() - new Date(createdAt).getTime() < 60_000;
+}
+
 export default function ChatBubble({ message, sender, text, timestamp }) {
   const isIA = message ? message.role === 'assistant' : sender === 'IA';
   const displayContent = message ? message.content : (text || '');
   const displayTimestamp = message
     ? new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : (timestamp || '');
+
+  const isVoice = message?.message_type === 'voice' && message?.audio_id;
+  const shouldAutoPlay = isIA && isVoice && isVeryRecent(message.created_at);
 
   return (
     <div className={`flex ${isIA ? 'justify-start' : 'justify-end animate-fade-in-up'} mb-4`}>
@@ -15,6 +24,13 @@ export default function ChatBubble({ message, sender, text, timestamp }) {
         }`}
       >
         <p className="text-sm leading-relaxed whitespace-pre-wrap">{displayContent}</p>
+        {isVoice && (
+          <VoiceMessagePlayer
+            src={`/api/voice/audio/${message.audio_id}`}
+            autoPlay={shouldAutoPlay}
+            accent={isIA ? '#E10600' : '#9ca3af'}
+          />
+        )}
         {displayTimestamp && (
           <span
             className={`text-[10px] mt-1 block ${
