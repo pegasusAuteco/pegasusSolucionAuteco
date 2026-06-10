@@ -1,7 +1,7 @@
 import base64
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from openai import OpenAI
@@ -60,7 +60,7 @@ def _now() -> str:
 @router.post("/transcribe")
 async def transcribe_and_answer(
     audio: UploadFile = File(...),
-    conversation_id: str | None = Query(default=None),
+    conversation_id: str | None = Form(default=None),
     user_id: str = Depends(get_current_user_id),
     log_service: ConversationLogService = Depends(get_log_service),
     col=Depends(get_conversations_col),
