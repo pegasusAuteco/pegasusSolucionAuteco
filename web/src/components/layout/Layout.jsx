@@ -234,19 +234,17 @@ const Layout = () => {
 
         <div className="w-[60%] flex flex-col overflow-hidden">
           <div className="flex items-center gap-1 px-4 pt-4 pb-0 shrink-0 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
-            {!isMechanic && (
-              <button
-                onClick={() => setActivePanelDesktop('inventory')}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-t-xl text-sm font-semibold transition-all border-b-2 ${
-                  activePanelDesktop === 'inventory'
-                    ? 'border-auteco-red text-auteco-red bg-red-50/50 dark:bg-red-900/10'
-                    : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
-                }`}
-              >
-                <Bike className="w-4 h-4" />
-                Inventario
-              </button>
-            )}
+            <button
+              onClick={() => setActivePanelDesktop('inventory')}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-t-xl text-sm font-semibold transition-all border-b-2 ${
+                activePanelDesktop === 'inventory'
+                  ? 'border-auteco-red text-auteco-red bg-red-50/50 dark:bg-red-900/10'
+                  : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+              }`}
+            >
+              <Bike className="w-4 h-4" />
+              Inventario
+            </button>
             <button
               onClick={() => setActivePanelDesktop('queue')}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-t-xl text-sm font-semibold transition-all border-b-2 ${
@@ -324,15 +322,13 @@ const Layout = () => {
             <MessageSquare className="w-6 h-6" />
             <span className="text-[10px] uppercase">Chat IA</span>
           </button>
-          {!isMechanic && (
-            <button
-              onClick={() => setMobileTab('inventory')}
-              className={`flex flex-col items-center gap-1 ${mobileTab === 'inventory' ? 'text-auteco-red font-bold' : 'text-gray-400 dark:text-gray-500'}`}
-            >
-              <Bike className="w-6 h-6" />
-              <span className="text-[10px] uppercase">Motos</span>
-            </button>
-          )}
+          <button
+            onClick={() => setMobileTab('inventory')}
+            className={`flex flex-col items-center gap-1 ${mobileTab === 'inventory' ? 'text-auteco-red font-bold' : 'text-gray-400 dark:text-gray-500'}`}
+          >
+            <Bike className="w-6 h-6" />
+            <span className="text-[10px] uppercase">Motos</span>
+          </button>
           <button
             onClick={() => setMobileTab('queue')}
             className={`flex flex-col items-center gap-1 ${mobileTab === 'queue' ? 'text-auteco-red font-bold' : 'text-gray-400 dark:text-gray-500'}`}
