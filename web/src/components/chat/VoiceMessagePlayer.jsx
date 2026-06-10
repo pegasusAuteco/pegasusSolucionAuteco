@@ -8,9 +8,14 @@ function fmt(sec) {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
+function pauseOtherAudio(except) {
+  document.querySelectorAll('audio').forEach(a => { if (a !== except) a.pause() })
+}
+
 export default function VoiceMessagePlayer({ src, autoPlay = false, accent = '#6b7280' }) {
   const audioRef = useRef(null)
   const barRef = useRef(null)
+  const hasPlayedRef = useRef(false)
   const [playing, setPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(null)
@@ -39,12 +44,6 @@ export default function VoiceMessagePlayer({ src, autoPlay = false, accent = '#6
     audio.addEventListener('pause', onPause)
     audio.addEventListener('ended', onEnded)
 
-    if (autoPlay) {
-      audio.play().catch(err => {
-        console.warn('[voice] autoplay bloqueado:', err)
-      })
-    }
-
     return () => {
       audio.pause()
       audio.removeEventListener('loadedmetadata', onLoadedMetadata)
@@ -55,12 +54,33 @@ export default function VoiceMessagePlayer({ src, autoPlay = false, accent = '#6
     }
   }, [autoPlay])
 
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!autoPlay || !audio) return
+
+    const handleCanPlay = () => {
+      if (hasPlayedRef.current) return
+      hasPlayedRef.current = true
+      pauseOtherAudio(audio)
+      audio.play().catch(err => console.warn('[voice] autoplay bloqueado:', err))
+    }
+
+    audio.addEventListener('canplay', handleCanPlay)
+    if (audio.readyState >= 3) handleCanPlay()
+
+    return () => {
+      audio.removeEventListener('canplay', handleCanPlay)
+      hasPlayedRef.current = false
+    }
+  }, [autoPlay])
+
   const togglePlay = useCallback(() => {
     const audio = audioRef.current
     if (!audio) return
     if (playing) {
       audio.pause()
     } else {
+      pauseOtherAudio(audio)
       audio.play().catch(err => console.warn('[voice] play error:', err))
     }
   }, [playing])

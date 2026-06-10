@@ -12,6 +12,7 @@ import { useQueryClient } from '@tanstack/react-query';
 const ChatContainer = () => {
   const [input, setInput] = useState('');
   const [isRecording, setIsRecording] = useState(false);
+  const [isCancelZone, setIsCancelZone] = useState(false);
   const [isVoiceBusy, setIsVoiceBusy] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
   const [imageName, setImageName] = useState(null);
@@ -27,6 +28,7 @@ const ChatContainer = () => {
   const isTouchRef = useRef(false);
   const btnRef = useRef(null);
   const releaseHandlerRef = useRef(null);
+  const moveHandlerRef = useRef(null);
   const analyserRef = useRef(null);
   const audioContextRef = useRef(null);
   const animFrameRef = useRef(null);
@@ -292,7 +294,7 @@ const ChatContainer = () => {
     };
   }, [isRecording]);
 
-  // Limpia el listener global si el componente se desmonta mientras graba
+  // Limpia los listeners globales si el componente se desmonta mientras graba
   useEffect(() => {
     return () => {
       if (releaseHandlerRef.current) {
@@ -300,6 +302,11 @@ const ChatContainer = () => {
         window.removeEventListener('touchend', releaseHandlerRef.current);
         window.removeEventListener('touchcancel', releaseHandlerRef.current);
         releaseHandlerRef.current = null;
+      }
+      if (moveHandlerRef.current) {
+        window.removeEventListener('mousemove', moveHandlerRef.current);
+        window.removeEventListener('touchmove', moveHandlerRef.current);
+        moveHandlerRef.current = null;
       }
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         cancellingRef.current = true;
@@ -350,6 +357,11 @@ const ChatContainer = () => {
       window.removeEventListener('touchcancel', handleRelease);
       releaseHandlerRef.current = null;
 
+      window.removeEventListener('mousemove', moveHandlerRef.current);
+      window.removeEventListener('touchmove', moveHandlerRef.current);
+      moveHandlerRef.current = null;
+      setIsCancelZone(false);
+
       if (ev.type === 'touchcancel') {
         cancellingRef.current = true;
       } else {
@@ -366,10 +378,20 @@ const ChatContainer = () => {
       stopRecording();
     };
 
+    const handleMove = (ev) => {
+      if (!btnRef.current) return;
+      const p = ev.touches ? ev.touches[0] : ev;
+      const r = btnRef.current.getBoundingClientRect();
+      setIsCancelZone(p.clientX < r.left || p.clientX > r.right || p.clientY < r.top || p.clientY > r.bottom);
+    };
+    moveHandlerRef.current = handleMove;
+
     releaseHandlerRef.current = handleRelease;
     window.addEventListener('mouseup', handleRelease);
     window.addEventListener('touchend', handleRelease);
     window.addEventListener('touchcancel', handleRelease);
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('touchmove', handleMove, { passive: true });
 
     startRecording();
   };
@@ -485,21 +507,28 @@ const ChatContainer = () => {
           disabled={isBusy}
           title={isRecording ? 'Suelta para enviar' : 'Mantén presionado para grabar'}
           className={`rounded-xl p-2 transition-colors shrink-0 ${
-            isRecording ? 'animate-pulse bg-red-100 text-red-600 hover:bg-red-200'
-            : isVoiceBusy ? 'animate-pulse bg-amber-100 text-amber-600'
-            : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+            isRecording && isCancelZone ? 'bg-red-200 text-red-700'
+            : isRecording              ? 'animate-pulse bg-red-100 text-red-600 hover:bg-red-200'
+            : isVoiceBusy              ? 'animate-pulse bg-amber-100 text-amber-600'
+            :                            'bg-gray-100 text-gray-500 hover:bg-gray-200'
           } disabled:opacity-40`}
         >
           {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
         </button>
 
         {isRecording ? (
-          <>
-            <canvas ref={canvasRef} className="flex-1 h-10" />
-            <span className="shrink-0 font-mono text-sm font-semibold tabular-nums text-auteco-red select-none">
-              {String(Math.floor(recordingSeconds / 60)).padStart(2, '0')}:{String(recordingSeconds % 60).padStart(2, '0')}
+          isCancelZone ? (
+            <span className="flex-1 text-center text-sm font-medium text-red-500 select-none animate-pulse">
+              ↩ Suelta para cancelar
             </span>
-          </>
+          ) : (
+            <>
+              <canvas ref={canvasRef} className="flex-1 h-10" />
+              <span className="shrink-0 font-mono text-sm font-semibold tabular-nums text-auteco-red select-none">
+                {String(Math.floor(recordingSeconds / 60)).padStart(2, '0')}:{String(recordingSeconds % 60).padStart(2, '0')}
+              </span>
+            </>
+          )
         ) : (
           <div className="relative flex-1">
             <input
