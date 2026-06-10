@@ -23,6 +23,7 @@ export function useChatWebSocket(conversationId, { onError, onConversationNotFou
   const reconnectTimerRef = useRef(null)
   const stabilityTimerRef = useRef(null)
   const mountedRef = useRef(true)
+  const lastConnectedIdRef = useRef(null)
 
   const [streamingText, setStreamingText] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
@@ -70,25 +71,28 @@ export function useChatWebSocket(conversationId, { onError, onConversationNotFou
       if (!mountedRef.current) return
       setIsConnected(false)
       setIsStreaming(false)
-      // Sesión inválida: el BFF completa el handshake y envía cierre explícito con código 4001
-      if (event.code === 4001) {
-        window.location.href = '/login'
-        return
-      }
-      // Conversación no encontrada: limpiar ID para que Layout seleccione una válida
-      if (event.code === 4004) {
-        onConversationNotFound?.()
-        return
-      }
-      if (event.code !== 1000) {
-        if (reconnectCountRef.current < MAX_RECONNECT) {
-          reconnectCountRef.current++
-          console.log(`[ws] Reconectando intento ${reconnectCountRef.current}/${MAX_RECONNECT}...`)
-          reconnectTimerRef.current = setTimeout(connect, RECONNECT_DELAY)
-        } else {
-          // Reintentos agotados — el fallback POST ya no es suficiente, avisar al usuario
-          onError?.('No se pudo conectar con el servidor de chat')
+
+      // Rechazos de aplicación (4000-4999) y cierre normal (1000): permanentes, nunca reintentar
+      if (event.code === 1000 || (event.code >= 4000 && event.code <= 4999)) {
+        if (event.code === 4001) {
+          window.location.href = '/login'
+          return
         }
+        if (event.code === 4004) {
+          onConversationNotFound?.()
+          return
+        }
+        return
+      }
+
+      // Cierres anormales transitorios (1006, etc.): reintentar hasta MAX_RECONNECT
+      if (reconnectCountRef.current < MAX_RECONNECT) {
+        reconnectCountRef.current++
+        console.log(`[ws] Reconectando intento ${reconnectCountRef.current}/${MAX_RECONNECT}...`)
+        reconnectTimerRef.current = setTimeout(connect, RECONNECT_DELAY)
+      } else {
+        console.log('[ws] máximo de reintentos alcanzado, deteniendo')
+        onError?.('No se pudo conectar con el servidor de chat')
       }
     }
 
@@ -99,7 +103,11 @@ export function useChatWebSocket(conversationId, { onError, onConversationNotFou
 
   useEffect(() => {
     mountedRef.current = true
-    reconnectCountRef.current = 0
+    // Resetear el contador solo cuando cambia la conversación, no en cada reconexión
+    if (lastConnectedIdRef.current !== conversationId) {
+      reconnectCountRef.current = 0
+      lastConnectedIdRef.current = conversationId
+    }
     connect()
 
     return () => {
