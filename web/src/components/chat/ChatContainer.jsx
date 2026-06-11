@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import ChatBubble from './ChatBubble';
-import { Send, Loader2, Mic, MicOff, ImagePlus, X } from 'lucide-react';
+import { Send, Loader2, Mic, MicOff, ImagePlus, X, Lock, Unlock, ChevronUp, Trash2 } from 'lucide-react';
 import { useChatUI } from '@hooks/useChatUI';
 import { useAuthStore } from '@store/authStore';
 import { useToastStore } from '@store/toastStore';
@@ -8,6 +8,9 @@ import { useMessages, useSendMessage, useCreateConversation } from '@hooks/useCh
 import { chatService } from '@services/api';
 import { useChatWebSocket } from '@hooks/useChatWebSocket';
 import { useQueryClient } from '@tanstack/react-query';
+
+const LOCK_THRESHOLD = 60;
+const CANCEL_HORIZ = 40;
 
 const ChatContainer = () => {
   const [input, setInput] = useState('');
@@ -18,6 +21,8 @@ const ChatContainer = () => {
   const [imageName, setImageName] = useState(null);
   const [usePostFallback, setUsePostFallback] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [isLocked, setIsLocked] = useState(false);
+  const [isFingerDown, setIsFingerDown] = useState(false);
 
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
@@ -44,6 +49,7 @@ const ChatContainer = () => {
   const pendingBlobRef = useRef(null);
   const enviarAudioRef = useRef(null);
   const pausedAudioRef = useRef(null);
+  const isLockedRef = useRef(false);
 
   const user = useAuthStore((s) => s.user);
   const addToast = useToastStore((s) => s.addToast);
@@ -155,6 +161,8 @@ const ChatContainer = () => {
     analyserRef.current = null;
     mediaRecorderRef.current?.stop();
     setIsRecording(false);
+    setIsLocked(false);
+    isLockedRef.current = false;
   }, []);
 
   useEffect(() => {
@@ -345,6 +353,7 @@ const ChatContainer = () => {
   }, [activeConversationId, enviarAudio]);
 
   const handleMicPress = (e) => {
+    if (isLockedRef.current) return;
     if (e.type === 'touchstart') {
       e.preventDefault();
       isTouchRef.current = true;
@@ -353,6 +362,20 @@ const ChatContainer = () => {
     }
 
     const handleRelease = (ev) => {
+      if (isLockedRef.current) {
+        // manos libres confirmado: soltó estando trabado.
+        // NO enviar ni cancelar — los botones Enviar/Cancelar mandan.
+        window.removeEventListener('mouseup', releaseHandlerRef.current);
+        window.removeEventListener('touchend', releaseHandlerRef.current);
+        window.removeEventListener('touchcancel', releaseHandlerRef.current);
+        window.removeEventListener('mousemove', moveHandlerRef.current);
+        window.removeEventListener('touchmove', moveHandlerRef.current);
+        releaseHandlerRef.current = null;
+        moveHandlerRef.current = null;
+        setIsCancelZone(false);
+        setIsFingerDown(false);
+        return;
+      }
       window.removeEventListener('mouseup', handleRelease);
       window.removeEventListener('touchend', handleRelease);
       window.removeEventListener('touchcancel', handleRelease);
@@ -370,13 +393,19 @@ const ChatContainer = () => {
         const y = ev.type.startsWith('touch') ? ev.changedTouches[0].clientY : ev.clientY;
         if (btnRef.current) {
           const r = btnRef.current.getBoundingClientRect();
-          if (x < r.left || x > r.right || y < r.top || y > r.bottom) {
+          const centerX = r.left + r.width / 2;
+          const dentroCorredor = Math.abs(x - centerX) < r.width / 2 + CANCEL_HORIZ;
+          const arriba = y < r.top;
+          const fueraRect = x < r.left || x > r.right || y < r.top || y > r.bottom;
+          const subiendoRectoSinTrabar = arriba && dentroCorredor;
+          if (fueraRect && !subiendoRectoSinTrabar) {
             cancellingRef.current = true;
           }
         }
       }
 
       stopRecording();
+      setIsFingerDown(false);
 
       if (cancellingRef.current && pausedAudioRef.current) {
         const { el, time } = pausedAudioRef.current;
@@ -390,7 +419,34 @@ const ChatContainer = () => {
       if (!btnRef.current) return;
       const p = ev.touches ? ev.touches[0] : ev;
       const r = btnRef.current.getBoundingClientRect();
-      setIsCancelZone(p.clientX < r.left || p.clientX > r.right || p.clientY < r.top || p.clientY > r.bottom);
+      const centerX = r.left + r.width / 2;
+      const dentroCorredor = Math.abs(p.clientX - centerX) < r.width / 2 + CANCEL_HORIZ;
+      const arriba = p.clientY < r.top;
+
+      // DESTRABAR: ya estaba trabado — evaluar si el dedo bajó de vuelta
+      if (isLockedRef.current) {
+        const yaNoArriba = !arriba || !dentroCorredor || p.clientY >= r.top - LOCK_THRESHOLD;
+        if (yaNoArriba) {
+          setIsLocked(false);
+          isLockedRef.current = false;
+          // cae a la clasificación normal de zonas
+        } else {
+          return; // sigue trabado y arriba, nada que hacer
+        }
+      }
+
+      // TRABAR: subió recto más allá del umbral
+      if (arriba && dentroCorredor && p.clientY < r.top - LOCK_THRESHOLD) {
+        setIsLocked(true);
+        isLockedRef.current = true;
+        setIsCancelZone(false);
+        return;
+      }
+
+      // CANCELAR: fuera del rect, pero NO en el corredor recto hacia arriba
+      const fueraRect = p.clientX < r.left || p.clientX > r.right || p.clientY < r.top || p.clientY > r.bottom;
+      const subiendoRectoSinTrabar = arriba && dentroCorredor;
+      setIsCancelZone(fueraRect && !subiendoRectoSinTrabar);
     };
     moveHandlerRef.current = handleMove;
 
@@ -407,7 +463,30 @@ const ChatContainer = () => {
       : null;
     if (playingAudio) playingAudio.pause();
 
+    setIsFingerDown(true);
     startRecording();
+  };
+
+  const enviarGrabacionTrabada = () => {
+    setIsFingerDown(false);
+    setIsLocked(false);
+    isLockedRef.current = false;
+    pausedAudioRef.current = null;
+    stopRecording();
+  };
+
+  const cancelarGrabacionTrabada = () => {
+    cancellingRef.current = true;
+    setIsFingerDown(false);
+    setIsLocked(false);
+    isLockedRef.current = false;
+    if (pausedAudioRef.current) {
+      const { el, time } = pausedAudioRef.current;
+      el.currentTime = time;
+      el.play().catch(() => {});
+      pausedAudioRef.current = null;
+    }
+    stopRecording();
   };
 
   const handleImageChange = (e) => {
@@ -513,27 +592,71 @@ const ChatContainer = () => {
         </button>
         <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
 
-        <button
-          ref={btnRef}
-          type="button"
-          onMouseDown={handleMicPress}
-          onTouchStart={handleMicPress}
-          disabled={isBusy}
-          title={isRecording ? 'Suelta para enviar' : 'Mantén presionado para grabar'}
-          className={`rounded-xl p-2 transition-colors shrink-0 ${
-            isRecording && isCancelZone ? 'bg-red-200 text-red-700'
-            : isRecording              ? 'animate-pulse bg-red-100 text-red-600 hover:bg-red-200'
-            : isVoiceBusy              ? 'animate-pulse bg-amber-100 text-amber-600'
-            :                            'bg-gray-100 text-gray-500 hover:bg-gray-200'
-          } disabled:opacity-40`}
-        >
-          {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-        </button>
+        <div className="relative shrink-0">
+          <button
+            ref={btnRef}
+            type="button"
+            onMouseDown={handleMicPress}
+            onTouchStart={handleMicPress}
+            disabled={isBusy}
+            title={isRecording ? 'Suelta para enviar' : 'Mantén presionado para grabar'}
+            className={`rounded-xl p-2 transition-colors ${
+              isRecording && isCancelZone ? 'bg-red-500 text-white'
+              : isRecording              ? 'animate-pulse bg-red-100 text-red-600 hover:bg-red-200'
+              : isVoiceBusy              ? 'animate-pulse bg-amber-100 text-amber-600'
+              :                            'bg-gray-100 text-gray-500 hover:bg-gray-200'
+            } disabled:opacity-40`}
+          >
+            {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+          </button>
+          {isRecording && !isCancelZone && (
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-6
+                            flex flex-col items-center gap-1 select-none pointer-events-none">
+              {!isLocked ? (
+                <>
+                  <Unlock className="h-4 w-4 text-gray-400" />
+                  <ChevronUp className="h-4 w-4 text-gray-400 animate-bounce" />
+                  <ChevronUp className="h-3 w-3 text-gray-400 opacity-60 -mt-2" />
+                  <ChevronUp className="h-2.5 w-2.5 text-gray-400 opacity-30 -mt-2" />
+                </>
+              ) : isFingerDown ? (
+                <Lock className="h-5 w-5 text-red-500" />
+              ) : (
+                <Lock className="h-5 w-5 text-red-500 animate-pulse" />
+              )}
+            </div>
+          )}
+        </div>
 
         {isRecording ? (
-          isCancelZone ? (
-            <span className="flex-1 text-center text-sm font-medium text-red-500 select-none animate-pulse">
-              ↩ Suelta para cancelar
+          isLocked ? (
+            <div className="flex-1 flex items-center gap-2">
+              <canvas ref={canvasRef} className="flex-1 h-10" />
+              <span className="shrink-0 font-mono text-sm font-semibold tabular-nums text-auteco-red select-none">
+                {String(Math.floor(recordingSeconds / 60)).padStart(2, '0')}:{String(recordingSeconds % 60).padStart(2, '0')}
+              </span>
+              <button
+                type="button"
+                onClick={cancelarGrabacionTrabada}
+                className="shrink-0 rounded-xl p-2 bg-red-500 hover:bg-red-600 transition-colors"
+                title="Cancelar grabación"
+                aria-label="Cancelar grabación"
+              >
+                <span className="block w-3.5 h-3.5 border-2 border-white rounded-[2px]" />
+              </button>
+              <button
+                type="button"
+                onClick={enviarGrabacionTrabada}
+                className="shrink-0 rounded-xl px-3 py-1.5 text-sm font-semibold text-white bg-auteco-red hover:opacity-90 transition-colors"
+              >
+                Enviar
+              </button>
+            </div>
+          ) : isCancelZone ? (
+            <span className="flex-1 flex items-center justify-center gap-2
+                             text-sm font-medium text-red-500 animate-pulse select-none">
+              <Trash2 className="h-4 w-4" />
+              Cancelar
             </span>
           ) : (
             <>
