@@ -25,12 +25,13 @@ const Loader = (
 )
 
 export default function App() {
+  const user = useAuthStore((s) => s.user)
   return (
     <BrowserRouter>
       <ToastViewport />
       <Suspense fallback={Loader}>
         <WorkshopProvider>
-          <ChatProvider>
+          <ChatProvider key={user?.id ?? 'anon'}>
             <Routes>
               <Route path="/login"    element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
