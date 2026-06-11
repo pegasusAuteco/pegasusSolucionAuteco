@@ -43,6 +43,7 @@ const ChatContainer = () => {
   const conversationIdRef = useRef(null);
   const pendingBlobRef = useRef(null);
   const enviarAudioRef = useRef(null);
+  const pausedAudioRef = useRef(null);
 
   const user = useAuthStore((s) => s.user);
   const addToast = useToastStore((s) => s.addToast);
@@ -376,6 +377,13 @@ const ChatContainer = () => {
       }
 
       stopRecording();
+
+      if (cancellingRef.current && pausedAudioRef.current) {
+        const { el, time } = pausedAudioRef.current;
+        el.currentTime = time;
+        el.play().catch(() => {});
+      }
+      pausedAudioRef.current = null;
     };
 
     const handleMove = (ev) => {
@@ -392,6 +400,12 @@ const ChatContainer = () => {
     window.addEventListener('touchcancel', handleRelease);
     window.addEventListener('mousemove', handleMove);
     window.addEventListener('touchmove', handleMove, { passive: true });
+
+    const playingAudio = [...document.querySelectorAll('audio')].find(a => !a.paused);
+    pausedAudioRef.current = playingAudio
+      ? { el: playingAudio, time: playingAudio.currentTime }
+      : null;
+    if (playingAudio) playingAudio.pause();
 
     startRecording();
   };
