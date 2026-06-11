@@ -49,3 +49,5 @@ test_*.py
 documents/
 
 docs/CLAUDE.md
+docs/plan-integracion-voz-pegasus.md
+docs/TABLERO_VOZ.md
