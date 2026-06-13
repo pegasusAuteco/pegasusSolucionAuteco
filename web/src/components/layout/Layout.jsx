@@ -5,6 +5,7 @@ import ThemeToggle from '../shared/ThemeToggle';
 import { MessageSquare, Plus, LogOut, Bike, X, BarChart3, Wrench } from 'lucide-react';
 import { useAuthStore } from '@store/authStore';
 import { useNavigate } from 'react-router-dom';
+import { useLogout } from '@hooks/useAuth';
 import { useChatUI } from '@hooks/useChatUI';
 import {
   useConversations, useCreateConversation, useRenameConversation,
@@ -15,8 +16,8 @@ import CompactMechanicQueue from '../workshop/CompactMechanicQueue';
 
 const Layout = () => {
   const user = useAuthStore((s) => s.user);
-  const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
+  const handleLogout = useLogout();
   const isAdmin = user?.role === 'admin';
   const isMechanic = user?.role === 'mecanico';
 
@@ -56,8 +57,6 @@ const Layout = () => {
       });
     }
   }, [activeConversationId, conversations, setActiveConversation, createConversation]);
-
-  const handleLogout = () => { logout(); navigate('/login'); };
 
   const handleNewChat = () => {
     createConversation.mutate('Nuevo chat', {

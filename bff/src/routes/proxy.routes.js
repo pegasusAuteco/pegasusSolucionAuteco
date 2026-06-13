@@ -11,6 +11,7 @@ const fastapiProxy = createProxyMiddleware({
   target: config.FASTAPI_URL,
   changeOrigin: true,
   pathRewrite: { '^/api': '' },
+  proxyTimeout: 150_000,
   on: {
     proxyReq: (proxyReq, req) => {
       if (req.session?.jwt) {

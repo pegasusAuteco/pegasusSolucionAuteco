@@ -1,6 +1,6 @@
 # MotorConnect — Arquitectura del sistema
 
-**Versión:** 2.0 | **Fecha:** 2026-06-02
+**Versión:** 2.1 | **Fecha:** 2026-06-11
 
 ---
 
@@ -54,11 +54,13 @@ La versión 2.0 migró el frontend de TypeScript a JavaScript puro, introdujo un
 | Motor | — | Cliente MongoDB async |
 | Passlib + bcrypt | — | Hashing de contraseñas |
 | python-jose | — | Generación y validación de JWT |
+| OpenAI Whisper (via SDK) | — | STT: transcripción de audio a texto |
+| OpenAI TTS / ElevenLabs | — | TTS: síntesis de respuesta a voz (provider configurable) |
 
 ### Bases de datos
 | Sistema | Uso |
 |---|---|
-| PostgreSQL (local) | Usuarios y autenticación |
+| PostgreSQL (local) | Usuarios, autenticación y mensajes de audio (`audio_messages`) |
 | Supabase (PostgreSQL) | Datos del taller: ingresos, motos, mecánicos |
 | MongoDB | Historial de conversaciones del chat |
 | Redis | Sesiones del BFF |
@@ -135,7 +137,8 @@ El frontend es una SPA sin TypeScript. Usa Vite como dev server y bundler.
 
 | Componente | Función |
 |---|---|
-| `ChatContainer.jsx` | Interfaz de chat con streaming WebSocket + fallback POST |
+| `ChatContainer.jsx` | Interfaz de chat: streaming WS + fallback POST + push-to-talk con waveform, modo manos libres (trabar/destrabar) y cancelación segura |
+| `VoiceMessagePlayer.jsx` | Reproductor de audio TTS integrado en las burbujas de respuesta de Pegasus |
 | `ReceptionForm.jsx` | Formulario de ingreso de moto (validación Zod) |
 | `MechanicDashboard.jsx` | Panel del mecánico con cola de trabajo |
 | `CompactMechanicQueue.jsx` | Vista compacta de la cola para sidebar |
@@ -173,6 +176,8 @@ El BFF es el único punto de entrada desde el browser. Centraliza:
 | PUT | `/api/workshop/motorcycles/:id` | Sí | Supabase |
 | GET/DELETE | `/api/history/*` | Sí | Supabase |
 | WS | `/api/chat/ws/:id` | Sesión cookie | FastAPI WS |
+| POST | `/api/voice/transcribe` | Sí | FastAPI (multipart: audio + conversation_id) |
+| GET | `/api/voice/audio/:id` | Sí | FastAPI (stream de audio TTS almacenado) |
 | * | `/api/*` | Sí | FastAPI (proxy) |
 
 ### 4.3 Backend IA — FastAPI + Python
@@ -188,6 +193,15 @@ FastAPI maneja exclusivamente la lógica de IA y autenticación:
 4. Al finalizar, guarda el mensaje completo en MongoDB y envía `{type: "done"}`
 
 **WebSocket (`/chat/ws/{conversation_id}`):** el JWT llega como query param `?token=` (el browser no puede enviar headers en el handshake WS). La conversación se verifica antes de `accept()`. `retrieve_context` se ejecuta en `asyncio.to_thread()` para no bloquear el event loop de asyncio.
+
+**Pipeline de voz (`POST /voice/transcribe`):**
+1. Recibe `multipart/form-data` con el archivo de audio y el `conversation_id`
+2. `audio_service.transcribe()` — envía el audio a OpenAI Whisper y obtiene la transcripción
+3. `retrieve_context(transcription)` — mismo pipeline RAG que el texto
+4. `generate_answer(transcription, chunks, history)` — llama al LLM y obtiene la respuesta en texto
+5. `tts_provider.synthesize(response)` — convierte la respuesta a audio (OpenAI TTS o ElevenLabs, según `TTS_PROVIDER` en config)
+6. Guarda el audio del usuario y la respuesta en la tabla `audio_messages` (PostgreSQL local)
+7. Retorna `{ transcription, response, audio_id }` al BFF; el audio se sirve luego via `GET /voice/audio/{id}`
 
 ### 4.4 Bases de datos
 
@@ -277,6 +291,40 @@ Browser (Secretario)       BFF                      Supabase
    │◄── 200 ────────────────│◄── ok ───────────────────│
 ```
 
+### 5.4 Flujo de consulta por voz (push-to-talk)
+
+```
+Browser (Mecánico)         BFF                      FastAPI           OpenAI / ElevenLabs
+   │                        │                          │                      │
+   │ mantiene presionado    │                          │                      │
+   │ el botón mic →         │                          │                      │
+   │ graba audio (WebAPI)   │                          │                      │
+   │                        │                          │                      │
+   │── POST /api/voice/ ────►                          │                      │
+   │   transcribe           │── POST /voice/ ──────────►                      │
+   │   multipart: audio +   │   transcribe             │── Whisper STT ───────►
+   │   conversation_id      │   Authorization: Bearer  │◄── transcription ────
+   │                        │                          │                      │
+   │                        │                          │── RAG pipeline       │
+   │                        │                          │   (Qdrant + LLM)     │
+   │                        │                          │── TTS synthesis ─────►
+   │                        │                          │◄── audio bytes ──────
+   │                        │                          │                      │
+   │                        │                          │ guarda audio_messages│
+   │◄── { transcription,    │◄── { transcription,      │                      │
+   │      response,         │      response,           │                      │
+   │      audio_id } ───────│      audio_id }          │                      │
+   │                        │                          │                      │
+   │ muestra transcripción  │                          │                      │
+   │ como burbuja usuario   │                          │                      │
+   │ muestra respuesta IA   │                          │                      │
+   │── GET /api/voice/ ─────►── GET /voice/audio/{id} ►                      │
+   │   audio/{id}           │◄── audio bytes ──────────│                      │
+   │◄── audio bytes ────────│                          │                      │
+   │ VoiceMessagePlayer     │                          │                      │
+   │ reproduce TTS          │                          │                      │
+```
+
 ---
 
 ## 6. Decisiones técnicas importantes
@@ -311,6 +359,24 @@ Browser (Secretario)       BFF                      Supabase
 
 **Tradeoff:** un bug en el BFF o FastAPI que permita una request no autenticada tendría acceso total a Supabase. El riesgo está mitigado por `requireAuth` en todas las rutas del BFF.
 
+### Voz: audio por HTTP request/response en lugar de WebSocket
+
+**Por qué:** el audio es una transacción completa — el usuario graba, para, y se envía un archivo entero; el servidor devuelve otro archivo entero. No es un flujo continuo. El WebSocket existente está optimizado para streaming incremental de tokens de texto. Meter audio por WebSocket obligaría a implementar chunking, framing y reensamblado de binarios que HTTP resuelve nativamente con `multipart/form-data`.
+
+**Tradeoff:** cada consulta de voz abre una conexión HTTP nueva. Para el caso de uso (una consulta cada varios segundos) es irrelevante; sería un problema solo con consultas en ráfaga continua.
+
+### Voz: el audio pasa por el BFF, no directo a FastAPI
+
+**Por qué:** el JWT nunca está en el browser — vive en Redis y solo el BFF lo conoce. El frontend solo tiene la cookie `connect.sid` httpOnly; no tiene credenciales para llamar a FastAPI directamente. El proxy del BFF inyecta `Authorization: Bearer <jwt>` automáticamente.
+
+**Tradeoff:** el archivo de audio atraviesa una capa extra (BFF → FastAPI), añadiendo latencia proporcional al tamaño del audio (~1–5 MB). Para consultas de taller (< 30 segundos de audio) es aceptable.
+
+### Voz: port selectivo de archivos desde `feature/voice-comand`
+
+**Por qué:** `feature/voice-comand` se separó de `main` antes de la migración TS→JS + BFF. Un merge generaría conflictos simultáneos de tres tipos: extensión (`.tsx` vs `.jsx`), contenido y arquitectura. El port selectivo (`git checkout <rama> -- <archivo>`) evita eso: el backend Python se copia casi literal y el frontend se reescribe en JSX reutilizando la lógica probada.
+
+**Tradeoff:** requiere revisar manualmente cada archivo portado para asegurarse de que las referencias a tipos TS eliminados y las importaciones de módulos estén actualizadas.
+
 ---
 
 ## 7. Pendientes y deuda técnica
@@ -321,7 +387,7 @@ Browser (Secretario)       BFF                      Supabase
 |---|---|---|
 | `GET /auth/profile` en FastAPI | El BFF lo sirve desde la sesión Redis. Si la sesión expira y se renueva, el perfil puede quedar desactualizado | Media |
 | Analytics | `GET /analytics/me` y `/analytics/admin` no implementados en FastAPI. El frontend ya tiene las páginas `HistoryPage` y `AdminPage` | Media |
-| Audio e imágenes en chat WS | El endpoint WS retorna `not implemented yet` para `type: audio` e `type: image` | Baja |
+| Modo conversación continua (Fase 2) | Push-to-talk implementado. El modo manos-libres (VAD + loop automático) está diseñado en el plan pero no desarrollado. La arquitectura de audio HTTP + `useVoiceLoop` está preparada para enchufarlo sin refactorizar lo ya hecho | Media |
 
 ### Seguridad
 
@@ -338,3 +404,6 @@ Browser (Secretario)       BFF                      Supabase
 | `web/src/services/workshopService.js` | Servicio frontend que puede estar llamando directamente a Supabase. Auditar y redirigir al BFF |
 | Logs de debug en producción | `console.log('[proxy]...', proxyReq.getHeaders())` en `proxy.routes.js` — eliminar antes de producción |
 | `create_test_users.py` | Script útil en dev, no debe existir en la imagen de producción. Agregar a `.dockerignore` |
+| Race condition de voz en conversación nueva | Si el usuario envía audio antes de que `createConversation` resuelva, el `conversation_id` es `null` en el multipart. El frontend guarda el audio en `pendingBlobRef` y lo reenvía en `onSettled` de `useCreateConversation`. No falla, pero añade una request extra | Baja |
+| Socket huérfano al cambiar de conversación | Al seleccionar otra conversación mientras hay streaming activo, el WS anterior sigue abierto hasta que FastAPI cierra el frame `done`. En la práctica el usuario no nota nada, pero el BFF mantiene el bridge unos segundos extra | Baja |
+| Whisper 502 en arranque en frío | FastAPI carga el modelo Whisper en el primer request de voz (~3–8 segundos). Si el BFF hace proxy antes de que el modelo esté cargado, FastAPI devuelve 502. Se resuelve con un warmup en `startup` o tolerando el retry desde el frontend | Baja |

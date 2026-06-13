@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@store/authStore'
 import { useToastStore } from '@store/toastStore'
@@ -45,9 +45,11 @@ export function useRegister() {
 export function useLogout() {
   const navigate = useNavigate()
   const logout = useAuthStore((s) => s.logout)
+  const queryClient = useQueryClient()
 
   return () => {
     logout()
+    queryClient.clear()
     navigate('/login')
   }
 }

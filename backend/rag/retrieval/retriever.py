@@ -82,15 +82,15 @@ def _format_chunk(chunk: dict) -> str:
             except Exception:
                 datos = {}
         if isinstance(datos, dict):
-            texto_plano = datos.get("texto_plano", "").strip()
+            texto_plano = (datos.get("texto_plano") or "").strip()
 
     if texto_plano:
         parts.append(texto_plano)
     else:
         # Fallback: usar titulo y descripcion del campo texto
         texto_parsed = _parse_texto(chunk.get("texto"))
-        titulo = texto_parsed.get("titulo", "").strip()
-        descripcion = texto_parsed.get("descripcion", "").strip()
+        titulo = (texto_parsed.get("titulo") or "").strip()
+        descripcion = (texto_parsed.get("descripcion") or "").strip()
         if titulo:
             parts.append(f"Título: {titulo}")
         if descripcion:
