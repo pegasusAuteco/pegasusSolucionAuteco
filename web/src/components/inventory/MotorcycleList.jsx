@@ -2,6 +2,8 @@ import { useState } from 'react';
 import MotorcycleCard from './MotorcycleCard';
 import { Search } from 'lucide-react';
 import { useChatUI } from '@hooks/useChatUI';
+import { useQuery } from '@tanstack/react-query';
+import { adminService } from '@services/api';
 
 const MOCK_MOTOS = [
   { id: 'M-001', name: 'Benelli 180S', client: 'Juan Valdez', image: '/images/motos/benelli180.png', status: 'In Repair', specs: { displacement: '175cc', mileage: '1,200' } },
@@ -22,15 +24,24 @@ const MotorcycleList = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const { setPendingChatInput } = useChatUI();
 
+  const { data: dbManuals, isLoading } = useQuery({
+    queryKey: ['catalogManuals'],
+    queryFn: adminService.getCatalogManuals,
+  });
+
   const handleMotoClick = (name, displacement) => {
     setPendingChatInput(
       `Cuéntame sobre la ${name} ${displacement}, ¿qué información técnica tienes disponible?`
     );
   };
 
-  const filteredMotos = MOCK_MOTOS.filter(moto =>
+  // Solo mostramos en el inventario aquellos manuales de BD que tengan una imagen asignada
+  const validDbManuals = (dbManuals || []).filter(manual => manual.image);
+  const allMotos = [...MOCK_MOTOS, ...validDbManuals];
+
+  const filteredMotos = allMotos.filter(moto =>
     moto.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    moto.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (moto.client && moto.client.toLowerCase().includes(searchTerm.toLowerCase())) ||
     moto.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -53,15 +64,21 @@ const MotorcycleList = () => {
         />
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6 pb-8">
-        {filteredMotos.map(moto => (
-          <MotorcycleCard
-            key={moto.id}
-            {...moto}
-            onClick={() => handleMotoClick(moto.name, moto.specs.displacement)}
-          />
-        ))}
-      </div>
+      {isLoading ? (
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-auteco-blue"></div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6 pb-8">
+          {filteredMotos.map(moto => (
+            <MotorcycleCard
+              key={moto.id}
+              {...moto}
+              onClick={() => handleMotoClick(moto.name, moto.specs.displacement)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 };

@@ -5,6 +5,8 @@ import { useToastStore } from '../../store/toastStore';
 import { ClipboardList, PlusCircle, Save, X, Loader2 } from 'lucide-react';
 import { getLocalISODate } from '../../utils/dates';
 import { workshopService } from '../../services/workshopService';
+import { useQuery } from '@tanstack/react-query';
+import { adminService } from '../../services/api';
 
 const receptionSchema = z.object({
   clientName: z.string().min(1, 'El nombre del cliente es requerido'),
@@ -25,6 +27,22 @@ const MODELS = [
 ];
 
 export default function ReceptionForm({ initialData, onSuccess, onCancel }) {
+  const { data: dbManuals } = useQuery({
+    queryKey: ['catalogManuals'],
+    queryFn: adminService.getCatalogManuals,
+  });
+
+  const validDbManuals = (dbManuals || []).map((m) => {
+    let name = m.name;
+    if (name.toLowerCase().endsWith('.pdf')) {
+      name = name.slice(0, -4);
+    }
+    return name.toUpperCase();
+  });
+  
+  const formattedModels = MODELS.map(m => m.toUpperCase());
+  const allModels = Array.from(new Set([...formattedModels, ...validDbManuals])).sort();
+
   const [formData, setFormData] = useState({
     clientName: initialData?.clientName ?? '',
     clientId: initialData?.clientId ?? '',
@@ -199,7 +217,7 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }) {
             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">Marca / Modelo</label>
             <select name="model" value={formData.model} onChange={handleChange} className={inputClass('model')}>
               <option value="">Seleccione una marca...</option>
-              {MODELS.map((model) => (
+              {allModels.map((model) => (
                 <option key={model} value={model}>{model}</option>
               ))}
             </select>

@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, lazy, Suspense } from 'react';
 import ChatContainer from '../chat/ChatContainer';
 import MotorcycleList from '../inventory/MotorcycleList';
+import ThemeToggle from '../shared/ThemeToggle';
 import { MessageSquare, Plus, LogOut, Bike, X, BarChart3, Wrench } from 'lucide-react';
 import { useAuthStore } from '@store/authStore';
 import { useNavigate } from 'react-router-dom';
@@ -10,7 +11,7 @@ import {
   useConversations, useCreateConversation, useRenameConversation,
   useDeleteConversation, useDeleteAllConversations,
 } from '@hooks/useChat';
-import AdminPage from '@pages/AdminPage';
+const AdminPage = lazy(() => import('@pages/AdminPage'));
 import CompactMechanicQueue from '../workshop/CompactMechanicQueue';
 
 const Layout = () => {
@@ -205,6 +206,7 @@ const Layout = () => {
           )}
         </div>
         <div className="flex items-center gap-4 text-sm font-medium">
+          <ThemeToggle />
           <span className="hidden sm:inline text-gray-600 dark:text-gray-300">
             Hola, {user?.name || 'Mecánico'}
           </span>
@@ -231,19 +233,17 @@ const Layout = () => {
 
         <div className="w-[60%] flex flex-col overflow-hidden">
           <div className="flex items-center gap-1 px-4 pt-4 pb-0 shrink-0 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
-            {!isMechanic && (
-              <button
-                onClick={() => setActivePanelDesktop('inventory')}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-t-xl text-sm font-semibold transition-all border-b-2 ${
-                  activePanelDesktop === 'inventory'
-                    ? 'border-auteco-red text-auteco-red bg-red-50/50 dark:bg-red-900/10'
-                    : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
-                }`}
-              >
-                <Bike className="w-4 h-4" />
-                Inventario
-              </button>
-            )}
+            <button
+              onClick={() => setActivePanelDesktop('inventory')}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-t-xl text-sm font-semibold transition-all border-b-2 ${
+                activePanelDesktop === 'inventory'
+                  ? 'border-auteco-red text-auteco-red bg-red-50/50 dark:bg-red-900/10'
+                  : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+              }`}
+            >
+              <Bike className="w-4 h-4" />
+              Inventario
+            </button>
             <button
               onClick={() => setActivePanelDesktop('queue')}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-t-xl text-sm font-semibold transition-all border-b-2 ${
@@ -270,7 +270,22 @@ const Layout = () => {
             )}
           </div>
           <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-950">
-            {activePanelDesktop === 'metrics' && isAdmin && <AdminPage />}
+            {activePanelDesktop === 'metrics' && isAdmin && (
+              <Suspense fallback={
+                <div className="flex-1 p-6 animate-pulse">
+                  <div className="h-8 w-64 bg-gray-200 dark:bg-gray-800 rounded mb-8"></div>
+                  <div className="h-32 bg-gray-200 dark:bg-gray-800 rounded-2xl mb-6"></div>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+                    <div className="h-28 bg-gray-200 dark:bg-gray-800 rounded-xl"></div>
+                    <div className="h-28 bg-gray-200 dark:bg-gray-800 rounded-xl"></div>
+                    <div className="h-28 bg-gray-200 dark:bg-gray-800 rounded-xl"></div>
+                    <div className="h-28 bg-gray-200 dark:bg-gray-800 rounded-xl"></div>
+                  </div>
+                </div>
+              }>
+                <AdminPage />
+              </Suspense>
+            )}
             {activePanelDesktop === 'inventory' && <MotorcycleList />}
             {activePanelDesktop === 'queue' && <CompactMechanicQueue isGrid={true} />}
           </div>
@@ -306,15 +321,13 @@ const Layout = () => {
             <MessageSquare className="w-6 h-6" />
             <span className="text-[10px] uppercase">Chat IA</span>
           </button>
-          {!isMechanic && (
-            <button
-              onClick={() => setMobileTab('inventory')}
-              className={`flex flex-col items-center gap-1 ${mobileTab === 'inventory' ? 'text-auteco-red font-bold' : 'text-gray-400 dark:text-gray-500'}`}
-            >
-              <Bike className="w-6 h-6" />
-              <span className="text-[10px] uppercase">Motos</span>
-            </button>
-          )}
+          <button
+            onClick={() => setMobileTab('inventory')}
+            className={`flex flex-col items-center gap-1 ${mobileTab === 'inventory' ? 'text-auteco-red font-bold' : 'text-gray-400 dark:text-gray-500'}`}
+          >
+            <Bike className="w-6 h-6" />
+            <span className="text-[10px] uppercase">Motos</span>
+          </button>
           <button
             onClick={() => setMobileTab('queue')}
             className={`flex flex-col items-center gap-1 ${mobileTab === 'queue' ? 'text-auteco-red font-bold' : 'text-gray-400 dark:text-gray-500'}`}
