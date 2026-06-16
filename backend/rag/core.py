@@ -10,7 +10,7 @@ from rag.tools import buscar_manuales_tecnicos, diagnosticar_falla_mecanica
 
 # 1. Configurar Herramientas y LLM
 tools = [buscar_manuales_tecnicos, diagnosticar_falla_mecanica]
-llm = ChatOpenAI(model=LLM_MODEL, api_key=OPENAI_API_KEY, temperature=0.1)
+llm = ChatOpenAI(model=LLM_MODEL, api_key=OPENAI_API_KEY, temperature=0.0)
 
 # 2. Definir el Prompt
 AGENT_SYSTEM_PROMPT = """Eres Pegasus, un mecánico experto de Auteco Mobility y un agente de inteligencia artificial autónomo.
@@ -22,7 +22,7 @@ Tu misión es resolver las dudas de los usuarios. Para lograrlo, TIENES ACCESO A
 REGLAS DE ORO:
 - NUNCA intentes responder de memoria. SIEMPRE usa tus herramientas para consultar la base de datos antes de responder datos técnicos.
 - EXIGE EL MODELO DE LA MOTOCICLETA: Si el usuario no te dice de qué moto está hablando, pregúntaselo antes de usar ninguna herramienta. Es imposible diagnosticar o dar especificaciones sin saber el modelo.
-- MANEJO DE ERRORES ORTOGRÁFICOS: Si el usuario escribe mal el nombre de la moto (ej. "veneli" en vez de "Benelli", "puzar" en vez de "Pulsar"), deduce el nombre correcto por similitud fonética y úsalo para buscar en tus herramientas.
+- JUICIO MECÁNICO CRÍTICO: Analiza detenidamente lo que te devuelven las herramientas. Si el usuario reporta una falla en el motor, y la herramienta te devuelve una falla de llantas, descarta esa información por ser mecánicamente ilógica. Si la información no tiene sentido o no corresponde a la parte afectada, dile al usuario que la falla es compleja y requiere diagnóstico presencial por parte de un técnico.
 - SÉ EXTREMADAMENTE BREVE Y CONCISO. No des explicaciones largas.
 """
 

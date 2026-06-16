@@ -1,0 +1,52 @@
+====================================================================
+           PLAN DE MEJORA Y OPTIMIZACIÓN RAG - PEGASUS
+====================================================================
+
+A continuación se detallan los problemas actuales detectados en el sistema RAG (Base de Datos Vectorial y Agente) junto con varias propuestas de solución técnica para implementar en el futuro.
+
+--------------------------------------------------------------------
+1. PROBLEMA: ESCASEZ Y CALIDAD DE DATOS (FALTA DE MODELOS)
+--------------------------------------------------------------------
+Descripción: La base de datos actual ("fallas_comunes.json") tiene muy pocas motos y fallas. Si un usuario pregunta por una moto que no existe (ej. Combat 100), el motor vectorial fuerza una coincidencia por palabras sueltas (ej. "vibra"), causando que el LLM alucine.
+
+SOLUCIONES PROPUESTAS:
+- Solución A (Datos Reales): Alimentar el JSON con al menos 30-50 fallas de cada modelo activo de Auteco.
+- Solución B (Filtro Estricto en Base de Datos): Modificar el "retriever" en Python para que, antes de hacer la búsqueda vectorial, filtre estrictamente por la columna "modelo" en Supabase. Si la moto no está en la base de datos, retornar 0 resultados para obligar al LLM a decir "No tengo registros de esa moto".
+- Solución C (Umbral de Similitud): Configurar un "Score Threshold" (Umbral) en Qdrant/Supabase. Si el fragmento recuperado tiene un parecido menor al 85% con la pregunta, descartarlo automáticamente.
+
+--------------------------------------------------------------------
+2. PROBLEMA: CONTROL DE AÑOS DE FABRICACIÓN (MODELOS ANTIGUOS)
+--------------------------------------------------------------------
+Descripción: Una misma moto (ej. Pulsar NS 200) puede tener un sistema de carburador en 2015 y Fuel Injection (FI) en 2024. Si no se separa por años, el bot dará instrucciones de reparar el carburador a una moto FI.
+
+SOLUCIONES PROPUESTAS:
+- Solución A (Enriquecimiento de Metadata): Añadir el campo "año_min" y "año_max" a la base de datos de manuales y fallas.
+- Solución B (Prompting del Agente): Instruir a LangChain en las "Reglas de Oro" para que exija no solo el modelo, sino también el AÑO de la motocicleta antes de dar un diagnóstico.
+- Solución C (Depuración): Borrar de la base de datos los manuales de motos descontinuadas que ya no sean relevantes para el taller, reduciendo la contaminación de datos.
+
+--------------------------------------------------------------------
+3. PROBLEMA: ERRORES DE ORTOGRAFÍA Y VARIACIONES (SINÓNIMOS)
+--------------------------------------------------------------------
+Descripción: Si el usuario escribe "Vonvo" en vez de "Bomba", o "Vataria" en vez de "Batería", el Embedding vectorial puede fallar en encontrar la solución correcta.
+
+SOLUCIONES PROPUESTAS:
+- Solución A (Corrección Ortográfica Previa): Crear un pequeño paso (una función) antes de LangChain que use un corrector ortográfico rápido o un LLM muy ligero (GPT-4o-mini) solo para reescribir la pregunta corrigiendo ortografía antes de mandarla a buscar.
+- Solución B (Expansión de Queries - Query Expansion): Que LangChain tome la pregunta del usuario y genere 3 versiones distintas usando sinónimos (ej. "Llanta", "Rueda", "Neumático", "Caucho") y busque las 3 en la base de datos para asegurar un resultado positivo.
+- Solución C (Diccionario de Sinónimos): Crear un diccionario en el backend con los errores comunes de los clientes y reemplazarlos automáticamente (ej. "amortiguador" = "telescopio", "carburador" = "carburador").
+
+--------------------------------------------------------------------
+4. PROBLEMA: COMPARACIÓN ENTRE MOTOS
+--------------------------------------------------------------------
+Descripción: El usuario puede preguntar "¿Qué es mejor, la Benelli 180S o la TVS Raider 125?". El sistema actual no está optimizado para comparar documentos diferentes simultáneamente.
+
+SOLUCIONES PROPUESTAS:
+- Solución A (Nueva Herramienta - Tool): Crear una tercera herramienta en LangChain llamada `@tool def comparar_motos(moto1: str, moto2: str)`. Esta herramienta iría a buscar las fichas técnicas de ambas motos por separado y se las entregaría al LLM en una tabla estructurada para que él pueda analizarlas y responder.
+- Solución B (Agentes Múltiples): Implementar un flujo donde un Sub-Agente investiga la moto A, otro investiga la moto B, y un Agente Supervisor escribe la respuesta final comparando ambos resúmenes.
+
+====================================================================
+PASOS PARA EMPEZAR A TRABAJAR ESTO (ROADMAP):
+1. Reunir los PDF/datos reales de Auteco.
+2. Limpiar y estructurar el JSON con metadata (año, modelo exacto).
+3. Correr de nuevo el script "ingest_fallas.py" y "manuals_router.py".
+4. Aplicar los filtros de metadata en las funciones de "vector_store/supabase_client.py".
+====================================================================
