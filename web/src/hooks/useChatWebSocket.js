@@ -128,9 +128,22 @@ export function useChatWebSocket(conversationId, { onError, onConversationNotFou
     }
     setStreamingText('')
     setIsStreaming(true)
+    
+    // Actualización optimista del mensaje del usuario para evitar el lag visual
+    const optimisticMessage = {
+      id: Date.now().toString(),
+      conversation_id: conversationId,
+      role: 'user',
+      content,
+      created_at: new Date().toISOString(),
+    }
+    queryClient.setQueryData(['messages', conversationId], (old) => {
+      return old ? [...old, optimisticMessage] : [optimisticMessage]
+    })
+    
     wsRef.current.send(JSON.stringify({ type: 'message', content }))
     return true
-  }, [])
+  }, [conversationId, queryClient])
 
   return { streamingText, isStreaming, isConnected, sendMessage }
 }

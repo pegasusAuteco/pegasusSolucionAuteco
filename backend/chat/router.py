@@ -52,6 +52,8 @@ def get_log_service(request: Request) -> ConversationLogService:
 
 
 def get_conversations_col(request: Request):
+    if getattr(request.app.state, "mongo_db", None) is None:
+        raise HTTPException(status_code=503, detail="Servicio de base de datos de chat no disponible (MongoDB).")
     return request.app.state.mongo_db["conversations"]
 
 

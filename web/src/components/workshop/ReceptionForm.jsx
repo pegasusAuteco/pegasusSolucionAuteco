@@ -32,15 +32,23 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }) {
     queryFn: adminService.getCatalogManuals,
   });
 
-  const validDbManuals = (dbManuals || []).map((m) => {
-    let name = m.name;
-    if (name.toLowerCase().endsWith('.pdf')) {
-      name = name.slice(0, -4);
+  const normalizeModel = (name) => {
+    let n = name;
+    if (n.toLowerCase().endsWith('.pdf')) {
+      n = n.slice(0, -4);
     }
-    return name.toUpperCase();
-  });
-  
-  const formattedModels = MODELS.map(m => m.toUpperCase());
+    // Elimina (catálogo), etc.
+    n = n.replace(/[-_]?\s*\(?cat[áa]logo\)?\s*/gi, '');
+    // Reemplaza guiones y guiones bajos por espacios
+    n = n.replace(/[-_]/g, ' ');
+    // Elimina fechas tipo 7 11 25 o 07 11 2025 al final (común en archivos subidos)
+    n = n.replace(/\s+\d{1,2}\s+\d{1,2}\s+\d{2,4}$/, '');
+    // Elimina espacios múltiples y recorta
+    return n.replace(/\s+/g, ' ').trim().toUpperCase();
+  };
+
+  const validDbManuals = (dbManuals || []).map((m) => normalizeModel(m.name));
+  const formattedModels = MODELS.map(normalizeModel);
   const allModels = Array.from(new Set([...formattedModels, ...validDbManuals])).sort();
 
   const [formData, setFormData] = useState({
@@ -57,7 +65,7 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }) {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { registerEntry, updateEntry } = useWorkshop();
+  const { queue, registerEntry, updateEntry } = useWorkshop();
   const addToast = useToastStore((state) => state.addToast);
 
   const handleChange = (e) => {
@@ -93,6 +101,21 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }) {
     }
 
     const data = result.data;
+
+    // Validación de placa duplicada en el taller (ignorando guiones)
+    const normalizedNewPlate = data.plate.replace(/-/g, '').toUpperCase();
+    const isDuplicate = queue.some(
+      (q) => q.plate.replace(/-/g, '').toUpperCase() === normalizedNewPlate && (!initialData || q.id !== initialData.id)
+    );
+
+    if (isDuplicate) {
+      setErrors((prev) => ({
+        ...prev,
+        plate: 'Esta moto ya se encuentra registrada en el taller',
+      }));
+      return;
+    }
+
     setIsSubmitting(true);
 
     if (initialData) {

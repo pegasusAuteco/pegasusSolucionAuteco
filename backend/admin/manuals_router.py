@@ -1,12 +1,13 @@
 import os
 import json
 import logging
+import asyncio
 from pathlib import Path
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 import fitz  # PyMuPDF
-from openai import OpenAI
+from openai import AsyncOpenAI
 
-from config import OPENAI_API_KEY, EMBEDDING_MODEL, VECTOR_TABLE
+from config import OPENAI_API_KEY, LLM_MODEL, EMBEDDING_MODEL, VECTOR_TABLE
 from vector_store.supabase_client import get_supabase
 
 router = APIRouter()
@@ -15,13 +16,68 @@ logger = logging.getLogger(__name__)
 # Directorio donde se guardan las imágenes en el frontend
 FRONTEND_IMAGES_DIR = Path(__file__).resolve().parent.parent.parent / "web" / "public" / "images" / "motos"
 
-def generate_embedding(client: OpenAI, text: str) -> list[float]:
+async def generate_embedding_async(client: AsyncOpenAI, text: str) -> list[float]:
     text = text.replace('\n', ' ')
-    response = client.embeddings.create(
+    response = await client.embeddings.create(
         model=EMBEDDING_MODEL,
         input=text
     )
     return response.data[0].embedding
+
+async def extract_structured_data(client: AsyncOpenAI, text: str) -> dict:
+    """Extrae titulo, descripcion, componentes y procedimientos usando LLM en formato JSON."""
+    prompt = f"""
+    Eres un asistente experto analizando manuales de motocicletas. Extrae la información del siguiente texto de una página en un objeto JSON estricto con las siguientes claves:
+    - "titulo": Resumen o título de lo que trata la página (ej. "CALCOMANÍAS NEGRO NEBULOSA", "SISTEMA ELÉCTRICO").
+    - "descripcion": Breve descripción del contenido.
+    - "componentes": Lista de nombres de partes, piezas o repuestos. Si no hay, usa un arreglo vacío [].
+    - "procedimientos": Lista de pasos, instrucciones o advertencias. Si no hay, usa null.
+
+    Texto a analizar:
+    {text}
+    """
+    try:
+        response = await client.chat.completions.create(
+            model=LLM_MODEL,
+            messages=[
+                {"role": "system", "content": "Devuelve únicamente un objeto JSON válido."},
+                {"role": "user", "content": prompt}
+            ],
+            response_format={"type": "json_object"},
+            temperature=0.2,
+        )
+        content = response.choices[0].message.content
+        return json.loads(content)
+    except Exception as e:
+        logger.error(f"Error extrayendo datos estructurados: {e}")
+        return {
+            "titulo": "Información del Manual",
+            "descripcion": text[:150] + "...",
+            "componentes": [],
+            "procedimientos": None
+        }
+
+async def process_page(page_num: int, page_text: str, name: str, image_url: str, openai_client: AsyncOpenAI, supabase):
+    if not page_text:
+        page_text = f"Portada o página sin texto del manual {name}"
+
+    structured_json = await extract_structured_data(openai_client, page_text)
+    embedding = await generate_embedding_async(openai_client, page_text)
+
+    datos_json = {"texto_plano": page_text}
+    if page_num == 0 and image_url:
+        datos_json["image_url"] = image_url
+
+    payload = {
+        "fuente": name,
+        "pagina": page_num + 1,
+        "texto": json.dumps(structured_json, ensure_ascii=False),
+        "datos": datos_json,
+        "embedding": embedding
+    }
+
+    supabase.table(VECTOR_TABLE).insert(payload).execute()
+    return True
 
 @router.post("/manuals")
 async def upload_manual(
@@ -32,14 +88,13 @@ async def upload_manual(
     if not OPENAI_API_KEY:
         raise HTTPException(status_code=500, detail="Falta OPENAI_API_KEY en el servidor")
 
-    openai_client = OpenAI(api_key=OPENAI_API_KEY)
+    openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
     supabase = get_supabase()
 
     # 1. Guardar la imagen si fue proporcionada
     image_url = None
     if image:
         os.makedirs(FRONTEND_IMAGES_DIR, exist_ok=True)
-        # Limpiar el nombre del archivo para evitar espacios raros
         safe_filename = image.filename.replace(" ", "_")
         image_path = FRONTEND_IMAGES_DIR / safe_filename
         
@@ -56,36 +111,25 @@ async def upload_manual(
         logger.error(f"Error leyendo el PDF: {e}")
         raise HTTPException(status_code=400, detail="Error leyendo el archivo PDF")
 
-    # 3. Procesar página por página
+    # 3. Procesar página por página en lotes (batching)
     chunks_inserted = 0
+    pages_to_process = []
+    
+    for page_num in range(len(doc)):
+        page = doc.load_page(page_num)
+        text = page.get_text("text").strip()
+        pages_to_process.append((page_num, text))
+
+    BATCH_SIZE = 5
     try:
-        for page_num in range(len(doc)):
-            page = doc.load_page(page_num)
-            text = page.get_text("text").strip()
-            
-            if not text:
-                text = f"Portada o página sin texto del manual {name}"
-
-            # Generar embedding
-            embedding = generate_embedding(openai_client, text)
-
-            # Preparar payload para manuales_chunks
-            # En la primera página guardamos el image_url en el json de datos para que el inventario pueda leerlo
-            datos_json = {"texto_plano": text}
-            if page_num == 0 and image_url:
-                datos_json["image_url"] = image_url
-
-            payload = {
-                "fuente": name,
-                "pagina": page_num + 1,
-                "texto": json.dumps({"titulo": f"Manual {name}", "descripcion": f"Página {page_num + 1} de {name}"}),
-                "datos": datos_json,
-                "embedding": embedding
-            }
-
-            # Insertar en Supabase
-            supabase.table(VECTOR_TABLE).insert(payload).execute()
-            chunks_inserted += 1
+        for i in range(0, len(pages_to_process), BATCH_SIZE):
+            batch = pages_to_process[i:i + BATCH_SIZE]
+            tasks = [
+                process_page(p_num, p_text, name, image_url, openai_client, supabase)
+                for p_num, p_text in batch
+            ]
+            await asyncio.gather(*tasks)
+            chunks_inserted += len(batch)
 
     except Exception as e:
         logger.error(f"Error procesando el PDF: {e}")
