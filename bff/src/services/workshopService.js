@@ -63,3 +63,55 @@ export async function deleteIngreso(id) {
     .eq('id', id)
   if (error) throw error
 }
+
+export async function notifyWhatsApp(id, parts = []) {
+  // 1. Obtener la info completa del ingreso
+  const { data: ingreso, error } = await supabase
+    .from('ingresos_taller')
+    .select('*')
+    .eq('id', id)
+    .single()
+    
+  if (error) throw error
+  if (!ingreso) throw new Error('Ingreso no encontrado')
+
+  // 2. Construir el payload para n8n
+  const payload = {
+    event: 'motorcycle_ready',
+    customer: {
+      name: ingreso.cliente,
+      phone: ingreso.celular || '', 
+      id_document: ingreso.documento_identidad,
+      email: ingreso.correo_electronico || ''
+    },
+    vehicle: {
+      plate: ingreso.placa,
+      model: ingreso.marca_modelo,
+      mileage: ingreso.kilometraje
+    },
+    details: {
+      observations: ingreso.observaciones,
+      mechanic_notes: ingreso.notas_mecanico || '',
+      parts: parts || []
+    }
+  }
+
+  const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL
+  if (!n8nWebhookUrl) {
+    console.warn('N8N_WEBHOOK_URL no está configurada, ignorando envío')
+    return { success: false, message: 'Webhook URL no configurada' }
+  }
+
+  // 3. Enviar a n8n
+  const response = await fetch(n8nWebhookUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+
+  if (!response.ok) {
+    throw new Error('Error al enviar webhook a n8n: ' + response.statusText)
+  }
+
+  return { success: true, payload }
+}

@@ -91,4 +91,18 @@ router.put('/motorcycles/:id/complete', async (req, res) => {
   }
 })
 
+// POST /workshop/motorcycles/:id/whatsapp
+router.post('/motorcycles/:id/whatsapp', async (req, res) => {
+  try {
+    const data = await workshopService.notifyWhatsApp(req.params.id, req.body.parts)
+    if (!data.success) {
+      return res.status(400).json({ error: data.message })
+    }
+    res.json(data)
+  } catch (err) {
+    console.error('[workshop] POST /motorcycles/:id/whatsapp', err)
+    res.status(500).json({ error: err.message })
+  }
+})
+
 export default router
