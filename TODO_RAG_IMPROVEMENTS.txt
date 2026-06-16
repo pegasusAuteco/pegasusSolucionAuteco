@@ -43,6 +43,15 @@ SOLUCIONES PROPUESTAS:
 - Solución A (Nueva Herramienta - Tool): Crear una tercera herramienta en LangChain llamada `@tool def comparar_motos(moto1: str, moto2: str)`. Esta herramienta iría a buscar las fichas técnicas de ambas motos por separado y se las entregaría al LLM en una tabla estructurada para que él pueda analizarlas y responder.
 - Solución B (Agentes Múltiples): Implementar un flujo donde un Sub-Agente investiga la moto A, otro investiga la moto B, y un Agente Supervisor escribe la respuesta final comparando ambos resúmenes.
 
+--------------------------------------------------------------------
+5. PROBLEMA: FALTA EL CAMPO "PARTE N°" EN LA BASE DE DATOS
+--------------------------------------------------------------------
+Descripción: Durante la lectura de los PDFs (ingesta de datos), el sistema actual no está aislando ni guardando correctamente la columna "Parte N°" de las piezas. Al estar todo mezclado como texto plano, es imposible para el Agente responder con precisión qué número de parte de catálogo (Parte N°) le corresponde a una pieza.
+
+SOLUCIONES PROPUESTAS:
+- Solución A (Mejorar Extracción PDF): Modificar el script de ingesta (ej. `admin/manuals_router.py`) para usar una librería de extracción de tablas (como Camelot o pdfplumber) que identifique la columna "Parte N°" y la guarde como un campo estructurado (clave-valor) dentro del JSON de cada fragmento.
+- Solución B (Metadata Estructurada): Guardar cada repuesto como un objeto estructurado en Supabase: `{"descripcion": "...", "parte_no": "...", "cantidad": "..."}` en lugar de un bloque de texto gigante. De esta forma la herramienta del agente podrá buscar exactamente el campo "parte_no".
+
 ====================================================================
 PASOS PARA EMPEZAR A TRABAJAR ESTO (ROADMAP):
 1. Reunir los PDF/datos reales de Auteco.
