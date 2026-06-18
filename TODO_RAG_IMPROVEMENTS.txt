@@ -58,4 +58,5 @@ PASOS PARA EMPEZAR A TRABAJAR ESTO (ROADMAP):
 2. Limpiar y estructurar el JSON con metadata (año, modelo exacto).
 3. Correr de nuevo el script "ingest_fallas.py" y "manuals_router.py".
 4. Aplicar los filtros de metadata en las funciones de "vector_store/supabase_client.py".
+5. Modificar la función _format_chunk en backend/rag/tools.py para usar el JSON estructurado ("texto") y enviarle al Agente la lista limpia de componentes y procedimientos, en lugar de usar el "texto_plano".
 ====================================================================
