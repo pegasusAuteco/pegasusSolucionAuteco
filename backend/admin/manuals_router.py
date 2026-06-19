@@ -94,6 +94,8 @@ async def upload_manual(
     # 1. Guardar la imagen si fue proporcionada
     image_url = None
     if image:
+        if image.content_type != "image/png" and not (image.filename or "").lower().endswith(".png"):
+            raise HTTPException(status_code=400, detail="La imagen debe estar en formato PNG")
         os.makedirs(FRONTEND_IMAGES_DIR, exist_ok=True)
         safe_filename = image.filename.replace(" ", "_")
         image_path = FRONTEND_IMAGES_DIR / safe_filename
@@ -141,6 +143,18 @@ async def upload_manual(
         "image": image_url,
         "chunks": chunks_inserted
     }
+
+@router.delete("/manuals/{name}")
+async def delete_manual(name: str):
+    """Elimina un manual y sus chunks de Supabase."""
+    supabase = get_supabase()
+    try:
+        response = supabase.table(VECTOR_TABLE).delete().eq("fuente", name).execute()
+        deleted_count = len(response.data or [])
+        return {"message": f"Manual '{name}' eliminado", "deleted_chunks": deleted_count}
+    except Exception as e:
+        logger.error(f"Error eliminando manual: {e}")
+        raise HTTPException(status_code=500, detail=f"Error eliminando manual: {str(e)}")
 
 @router.get("/manuals")
 async def get_manuals_catalog():

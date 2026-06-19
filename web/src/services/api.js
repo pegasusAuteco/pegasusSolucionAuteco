@@ -72,6 +72,20 @@ export const adminService = {
       body: JSON.stringify({ role }),
     }),
   getCatalogManuals: () => apiFetch(`${baseURL}/admin/manuals`),
+  deleteManual: async (name) => {
+    const token = localStorage.getItem('jwt')
+    const headers = {}
+    if (token) headers['Authorization'] = `Bearer ${token}`
+    const response = await fetch(`${baseURL}/admin/manuals/${encodeURIComponent(name)}`, {
+      method: 'DELETE',
+      headers,
+    })
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.detail || errorData.error || 'Error eliminando manual')
+    }
+    return response.json()
+  },
   uploadManual: async (formData) => {
     // Para FormData NO enviamos el header Content-Type en apiFetch
     const token = localStorage.getItem('jwt')

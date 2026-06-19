@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Users, MessageSquare, Activity, FilePlus2, Upload, X, Construction, Zap, Shield } from 'lucide-react'
+import { Users, MessageSquare, Activity, FilePlus2, Upload, X, Construction, Zap, Shield, Trash2 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { analyticsService, adminService } from '@services/api'
 import { useToastStore } from '@store/toastStore'
@@ -56,16 +56,30 @@ export default function AdminPage() {
     }
   })
 
-  const handleUploadManual = () => {
-    if (newManual.name && newManual.pdf) {
-      const formData = new FormData()
-      formData.append('name', newManual.name)
-      formData.append('pdf', newManual.pdf)
-      if (newManual.image) {
-        formData.append('image', newManual.image)
-      }
-      uploadManualMutation.mutate(formData)
+  const deleteManualMutation = useMutation({
+    mutationFn: (name) => adminService.deleteManual(name),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries(['catalogManuals'])
+      addToast('success', `Manual eliminado (${data.deleted_chunks} chunks)`)
+    },
+    onError: (err) => {
+      addToast('error', `Error eliminando manual: ${err.message}`)
     }
+  })
+
+  const handleUploadManual = () => {
+    if (!newManual.name || !newManual.pdf) return
+    if (newManual.image && !newManual.image.type.startsWith('image/png') && !newManual.image.name.endsWith('.png')) {
+      addToast('error', 'La imagen debe estar en formato PNG')
+      return
+    }
+    const formData = new FormData()
+    formData.append('name', newManual.name)
+    formData.append('pdf', newManual.pdf)
+    if (newManual.image) {
+      formData.append('image', newManual.image)
+    }
+    uploadManualMutation.mutate(formData)
   }
 
   // Filtrar para mostrar solo los manuales nuevos (los que tienen imagen asociada)
@@ -169,8 +183,8 @@ export default function AdminPage() {
             <div className="py-4 flex justify-center"><div className="animate-spin h-5 w-5 border-b-2 border-auteco-red rounded-full"></div></div>
           ) : (
             validDbManuals.map((manual, i) => (
-              <div key={i} className="flex items-center justify-between gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700/50 group hover:border-auteco-red/40 transition-colors">
-                <div className="flex items-center gap-3 overflow-hidden">
+                  <div key={i} className="flex items-center justify-between gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700/50 group hover:border-auteco-red/40 transition-colors">
+                <div className="flex items-center gap-3 overflow-hidden flex-1">
                   {manual.image ? (
                     <img src={manual.image} alt={manual.name} className="shrink-0 w-10 h-10 object-cover rounded-lg shadow-sm border border-gray-200 dark:border-gray-700" />
                   ) : (
@@ -183,6 +197,14 @@ export default function AdminPage() {
                     <p className="text-xs text-gray-500 dark:text-gray-400 truncate">Indexado · Disponible en Chatbot</p>
                   </div>
                 </div>
+                <button
+                  onClick={() => deleteManualMutation.mutate(manual.name)}
+                  disabled={deleteManualMutation.isPending}
+                  className="shrink-0 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
+                  title="Eliminar manual"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
             ))
           )}
@@ -277,10 +299,10 @@ export default function AdminPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">Imagen de la Moto <span className="text-gray-400 font-normal text-xs">(Opcional)</span></label>
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1.5">Imagen de la Moto <span className="text-auteco-red font-normal text-xs">(Solo PNG)</span></label>
                 <input 
                   type="file" 
-                  accept="image/*"
+                  accept="image/png"
                   onChange={(e) => setNewManual({...newManual, image: e.target.files?.[0]})}
                   className="w-full text-sm text-gray-500 file:cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 dark:file:bg-gray-800 dark:file:text-gray-300 dark:hover:file:bg-gray-700 transition-colors border border-dashed border-gray-300 dark:border-gray-700 p-2 rounded-xl bg-gray-50 dark:bg-gray-800/50"
                 />
