@@ -14,6 +14,17 @@ export default function ChatBubble({ message, sender, text, timestamp }) {
   const isVoice = message?.message_type === 'voice' && message?.audio_id;
   const shouldAutoPlay = isIA && isVoice && isVeryRecent(message.created_at);
 
+  const renderMarkdown = (text) => {
+    if (!text) return '';
+    const parts = text.split(/(\*\*.*?\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={i} className="font-bold">{part.slice(2, -2)}</strong>;
+      }
+      return part;
+    });
+  };
+
   return (
     <div className={`flex ${isIA ? 'justify-start' : 'justify-end animate-fade-in-up'} mb-4`}>
       <div
@@ -23,7 +34,7 @@ export default function ChatBubble({ message, sender, text, timestamp }) {
             : 'bg-auteco-blue text-white rounded-tr-none'
         }`}
       >
-        <p className="text-sm leading-relaxed whitespace-pre-wrap">{displayContent}</p>
+        <p className="text-sm leading-relaxed whitespace-pre-wrap">{renderMarkdown(displayContent)}</p>
         {isVoice && (
           <VoiceMessagePlayer
             src={`/api/voice/audio/${message.audio_id}`}

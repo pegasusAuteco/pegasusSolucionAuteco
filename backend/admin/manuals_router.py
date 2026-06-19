@@ -30,7 +30,7 @@ async def extract_structured_data(client: AsyncOpenAI, text: str) -> dict:
     Eres un asistente experto analizando manuales de motocicletas. Extrae la información del siguiente texto de una página en un objeto JSON estricto con las siguientes claves:
     - "titulo": Resumen o título de lo que trata la página (ej. "CALCOMANÍAS NEGRO NEBULOSA", "SISTEMA ELÉCTRICO").
     - "descripcion": Breve descripción del contenido.
-    - "componentes": Lista de nombres de partes, piezas o repuestos. Si no hay, usa un arreglo vacío [].
+    - "componentes": Lista de objetos JSON, cada uno con las claves "descripcion" (nombre de la pieza) y "parte_no" (número de parte o código de catálogo, si aparece; si no, null) y "cantidad" (si aparece). Si no hay, usa un arreglo vacío [].
     - "procedimientos": Lista de pasos, instrucciones o advertencias. Si no hay, usa null.
 
     Texto a analizar:
