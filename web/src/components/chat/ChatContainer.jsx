@@ -595,7 +595,7 @@ const ChatContainer = () => {
           onClick={() => fileInputRef.current?.click()}
           disabled={isBusy}
           title="Adjuntar imagen"
-          className={`rounded-full p-2 shrink-0 self-end transition-colors ${
+          className={`rounded-full p-2.5 shrink-0 self-end transition-colors ${
             imagePreview ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
           } disabled:opacity-40`}
         >
@@ -604,7 +604,7 @@ const ChatContainer = () => {
         <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
 
         {/* CENTRO: textarea u onda/timer */}
-        <div className="flex-1 min-w-0 overflow-hidden flex items-center min-h-[44px]">
+        <div className="flex-1 min-w-0 overflow-hidden flex items-center min-h-[40px]">
           {isRecording ? (
             isLocked ? (
               <div className="w-full min-w-0 flex items-center gap-2">
@@ -648,7 +648,7 @@ const ChatContainer = () => {
             <textarea
               ref={inputRef}
               placeholder="¿Qué deseas preguntar el día de hoy?"
-              className="w-full bg-transparent resize-none overflow-y-auto block max-h-[200px] leading-relaxed m-0 px-2 py-2 outline-none text-sm text-gray-800 dark:text-gray-200 placeholder-gray-400"
+              className="w-full bg-transparent resize-none overflow-y-auto block max-h-[200px] leading-6 m-0 px-2 py-2 outline-none text-sm text-gray-800 dark:text-gray-200 placeholder-gray-400"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
@@ -673,7 +673,7 @@ const ChatContainer = () => {
               onTouchStart={handleMicPress}
               disabled={isBusy}
               title={isRecording ? 'Suelta para enviar' : 'Mantén presionado para grabar'}
-              className={`rounded-full p-2 transition-colors ${
+              className={`rounded-full p-2.5 transition-colors ${
                 isRecording && isCancelZone ? 'bg-red-500 text-white'
                 : isRecording              ? 'animate-pulse bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
                 : isVoiceBusy              ? 'animate-pulse bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
@@ -704,9 +704,15 @@ const ChatContainer = () => {
           <button
             type="submit"
             disabled={!canSend}
-            className="bg-auteco-red text-white p-2 rounded-full shrink-0 self-end hover:opacity-90 transition-all active:scale-90 disabled:opacity-40 z-10"
+            className="bg-auteco-red text-white p-2.5 rounded-full shrink-0 self-end hover:opacity-90 transition-all active:scale-90 disabled:opacity-40 z-10"
           >
-            {isBusy ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+            {isBusy ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+                <path d="M3 3 L21 12 L3 21 L9 12 Z" />
+              </svg>
+            )}
           </button>
         ) : null}
       </form>
