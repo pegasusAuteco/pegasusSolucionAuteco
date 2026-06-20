@@ -23,6 +23,12 @@ const ChatContainer = () => {
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [isLocked, setIsLocked] = useState(false);
   const [isFingerDown, setIsFingerDown] = useState(false);
+  // Tipo de puntero primario: coarse = táctil (móvil/tablet) → gesto;
+  // fine = mouse (desktop) → clic-clic. Bifurca el modo del mic.
+  const [isTouch, setIsTouch] = useState(
+    () => typeof window !== 'undefined' &&
+          window.matchMedia('(pointer: coarse)').matches
+  );
 
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
@@ -188,6 +194,15 @@ const ChatContainer = () => {
     }
     startPosRef.current = null;
     origRectRef.current = null;
+  }, []);
+
+  // Mantener isTouch al día si cambia el puntero primario (raro, p.ej.
+  // conectar/desconectar dispositivos).
+  useEffect(() => {
+    const mq = window.matchMedia('(pointer: coarse)');
+    const handler = (e) => setIsTouch(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
   }, []);
 
   useEffect(() => {
@@ -657,7 +672,37 @@ const ChatContainer = () => {
         {/* CENTRO: textarea u onda/timer */}
         <div className="flex-1 min-w-0 overflow-hidden flex items-center min-h-[40px]">
           {isRecording ? (
-            isLocked ? (
+            !isTouch ? (
+              // DESKTOP: clic-clic. Controles agrupados a la DERECHA (estilo
+              // WhatsApp): [espaciador] [🗑] [tiempo] [onda corta] [Enviar].
+              <div className="w-full flex items-center gap-2 min-h-[40px]">
+                {/* espaciador que empuja el grupo a la derecha */}
+                <div className="flex-1 min-w-0" />
+
+                <button
+                  type="button"
+                  onClick={cancelarGrabacionTrabada}
+                  className="shrink-0 rounded-full p-2 text-red-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  title="Cancelar grabación"
+                  aria-label="Cancelar"
+                >
+                  <Trash2 className="h-5 w-5" />
+                </button>
+                <span className="shrink-0 font-mono text-sm font-semibold tabular-nums text-auteco-red select-none">
+                  {String(Math.floor(recordingSeconds / 60)).padStart(2, '0')}:{String(recordingSeconds % 60).padStart(2, '0')}
+                </span>
+                <canvas ref={canvasRef} className="shrink-0 w-32 h-10" />
+                <button
+                  type="button"
+                  onClick={enviarGrabacionTrabada}
+                  className="shrink-0 rounded-full p-2 bg-auteco-red text-white hover:opacity-90 transition-colors"
+                  title="Enviar"
+                  aria-label="Enviar"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </div>
+            ) : isLocked ? (
               <div className="w-full min-w-0 flex items-center gap-2">
                 <canvas ref={canvasRef} className="flex-1 min-w-0 h-10" />
                 <span className="shrink-0 font-mono text-sm font-semibold tabular-nums text-auteco-red select-none">
@@ -713,16 +758,20 @@ const ChatContainer = () => {
           )}
         </div>
 
-        {/* DERECHA: slot único que alterna MIC ↔ ENVIAR (oculto en modo trabado) */}
-        {((isRecording && !isLocked) || (!isRecording && !canSend)) ? (
+        {/* DERECHA: slot único que alterna MIC ↔ ENVIAR. En desktop el mic solo
+            aparece cuando NO se graba (al grabar, los controles van al CENTRO). */}
+        {((isTouch && isRecording && !isLocked) || (!isRecording && !canSend)) ? (
           <div className="relative shrink-0 self-end">
             <button
               ref={btnRef}
               type="button"
-              onMouseDown={handleMicPress}
-              onTouchStart={handleMicPress}
+              {...(isTouch
+                ? { onMouseDown: handleMicPress, onTouchStart: handleMicPress }
+                : { onClick: startRecording })}
               disabled={isBusy}
-              title={isRecording ? 'Suelta para enviar' : 'Mantén presionado para grabar'}
+              title={isTouch
+                ? (isRecording ? 'Suelta para enviar' : 'Mantén presionado para grabar')
+                : 'Clic para grabar'}
               className={`rounded-full p-2.5 transition-colors ${
                 isRecording && isCancelZone ? 'text-red-600 dark:text-red-400'
                 : isRecording              ? 'animate-pulse bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
