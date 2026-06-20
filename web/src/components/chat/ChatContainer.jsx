@@ -50,6 +50,7 @@ const ChatContainer = () => {
   const enviarAudioRef = useRef(null);
   const pausedAudioRef = useRef(null);
   const isLockedRef = useRef(false);
+  const lockRectRef = useRef(null);
 
   const user = useAuthStore((s) => s.user);
   const addToast = useToastStore((s) => s.addToast);
@@ -170,6 +171,7 @@ const ChatContainer = () => {
     setIsRecording(false);
     setIsLocked(false);
     isLockedRef.current = false;
+    lockRectRef.current = null;
   }, []);
 
   useEffect(() => {
@@ -382,6 +384,7 @@ const ChatContainer = () => {
         window.removeEventListener('touchmove', moveHandlerRef.current);
         releaseHandlerRef.current = null;
         moveHandlerRef.current = null;
+        lockRectRef.current = null;
         setIsCancelZone(false);
         setIsFingerDown(false);
         return;
@@ -426,9 +429,19 @@ const ChatContainer = () => {
     };
 
     const handleMove = (ev) => {
-      if (!btnRef.current) return;
       const p = ev.touches ? ev.touches[0] : ev;
-      const r = btnRef.current.getBoundingClientRect();
+
+      // Resolver el rect: el del botón si existe, o el cacheado al trabar
+      // (en modo trabado el mic se desmonta y btnRef.current es null).
+      let r;
+      if (btnRef.current) {
+        r = btnRef.current.getBoundingClientRect();
+      } else if (isLockedRef.current && lockRectRef.current) {
+        r = lockRectRef.current;
+      } else {
+        return;
+      }
+
       const centerX = r.left + r.width / 2;
       const dentroCorredor = Math.abs(p.clientX - centerX) < r.width / 2 + CANCEL_HORIZ;
       const arriba = p.clientY < r.top;
@@ -439,6 +452,7 @@ const ChatContainer = () => {
         if (yaNoArriba) {
           setIsLocked(false);
           isLockedRef.current = false;
+          lockRectRef.current = null;
           // cae a la clasificación normal de zonas
         } else {
           return; // sigue trabado y arriba, nada que hacer
@@ -447,6 +461,7 @@ const ChatContainer = () => {
 
       // TRABAR: subió recto más allá del umbral
       if (arriba && dentroCorredor && p.clientY < r.top - LOCK_THRESHOLD) {
+        lockRectRef.current = r;   // cachear el rect ANTES de que el mic se desmonte
         setIsLocked(true);
         isLockedRef.current = true;
         setIsCancelZone(false);
