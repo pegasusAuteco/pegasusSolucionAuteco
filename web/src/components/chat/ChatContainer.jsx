@@ -343,11 +343,14 @@ const ChatContainer = () => {
       addToast('error', detail);
     } finally {
       if (result) {
+        // El backend siempre guarda la respuesta del asistente (incluso en silencio),
+        // así que recargamos el historial para mostrar la burbuja con texto y audio.
         queryClient.invalidateQueries({ queryKey: ['messages', convId] });
       }
       setIsVoiceBusy(false);
     }
   }, [addToast, queryClient]);
+
 
   useEffect(() => { enviarAudioRef.current = enviarAudio; }, [enviarAudio]);
 
@@ -585,19 +588,34 @@ const ChatContainer = () => {
         </div>
       )}
 
-      <form onSubmit={handleSend} className={`flex flex-col relative ${containerClass}`}>
-        <div className="flex-1 min-h-[44px] w-full flex items-center pt-2">
+      <form onSubmit={handleSend} className={`flex items-end gap-2 relative px-2 py-2 ${containerClass}`}>
+        {/* IZQUIERDA: botón de imagen */}
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isBusy}
+          title="Adjuntar imagen"
+          className={`rounded-full p-2 shrink-0 self-end transition-colors ${
+            imagePreview ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
+          } disabled:opacity-40`}
+        >
+          <ImagePlus className="h-5 w-5" />
+        </button>
+        <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+
+        {/* CENTRO: textarea u onda/timer */}
+        <div className="flex-1 min-w-0 overflow-hidden flex items-center">
           {isRecording ? (
             isLocked ? (
-              <div className="w-full flex items-center gap-2 px-3">
-                <canvas ref={canvasRef} className="flex-1 h-10" />
+              <div className="w-full min-w-0 flex items-center gap-2">
+                <canvas ref={canvasRef} className="flex-1 min-w-0 h-10" />
                 <span className="shrink-0 font-mono text-sm font-semibold tabular-nums text-auteco-red select-none">
                   {String(Math.floor(recordingSeconds / 60)).padStart(2, '0')}:{String(recordingSeconds % 60).padStart(2, '0')}
                 </span>
                 <button
                   type="button"
                   onClick={cancelarGrabacionTrabada}
-                  className="shrink-0 rounded-xl p-2 bg-red-500 hover:bg-red-600 transition-colors"
+                  className="shrink-0 rounded-full p-2 bg-red-500 hover:bg-red-600 transition-colors"
                   title="Cancelar grabación"
                   aria-label="Cancelar grabación"
                 >
@@ -606,9 +624,11 @@ const ChatContainer = () => {
                 <button
                   type="button"
                   onClick={enviarGrabacionTrabada}
-                  className="shrink-0 rounded-xl px-3 py-1.5 text-sm font-semibold text-white bg-auteco-red hover:opacity-90 transition-colors"
+                  className="shrink-0 rounded-full p-2 bg-auteco-red text-white hover:opacity-90 transition-colors"
+                  title="Enviar"
+                  aria-label="Enviar"
                 >
-                  Enviar
+                  <Send className="w-4 h-4" />
                 </button>
               </div>
             ) : isCancelZone ? (
@@ -617,8 +637,8 @@ const ChatContainer = () => {
                 Cancelar
               </span>
             ) : (
-              <div className="w-full flex items-center gap-2 px-3">
-                <canvas ref={canvasRef} className="flex-1 h-10" />
+              <div className="w-full min-w-0 flex items-center gap-2">
+                <canvas ref={canvasRef} className="flex-1 min-w-0 h-10" />
                 <span className="shrink-0 font-mono text-sm font-semibold tabular-nums text-auteco-red select-none">
                   {String(Math.floor(recordingSeconds / 60)).padStart(2, '0')}:{String(recordingSeconds % 60).padStart(2, '0')}
                 </span>
@@ -628,7 +648,7 @@ const ChatContainer = () => {
             <textarea
               ref={inputRef}
               placeholder="¿Qué deseas preguntar el día de hoy?"
-              className="w-full bg-transparent resize-none overflow-y-auto block max-h-[200px] leading-relaxed m-0 px-4 py-2 outline-none text-sm text-gray-800 dark:text-gray-200 placeholder-gray-400"
+              className="w-full bg-transparent resize-none overflow-y-auto block max-h-[200px] leading-relaxed m-0 px-2 py-2 outline-none text-sm text-gray-800 dark:text-gray-200 placeholder-gray-400"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
@@ -643,66 +663,52 @@ const ChatContainer = () => {
           )}
         </div>
 
-        <div className="flex items-center justify-between px-2 pb-2">
-          <div className="flex items-center gap-1">
+        {/* DERECHA: slot único que alterna MIC ↔ ENVIAR (oculto en modo trabado) */}
+        {((isRecording && !isLocked) || (!isRecording && !canSend)) ? (
+          <div className="relative shrink-0 self-end">
             <button
+              ref={btnRef}
               type="button"
-              onClick={() => fileInputRef.current?.click()}
+              onMouseDown={handleMicPress}
+              onTouchStart={handleMicPress}
               disabled={isBusy}
-              title="Adjuntar imagen"
-              className={`rounded-full p-2 transition-colors shrink-0 ${
-                imagePreview ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
+              title={isRecording ? 'Suelta para enviar' : 'Mantén presionado para grabar'}
+              className={`rounded-full p-2 transition-colors ${
+                isRecording && isCancelZone ? 'bg-red-500 text-white'
+                : isRecording              ? 'animate-pulse bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
+                : isVoiceBusy              ? 'animate-pulse bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
+                :                            'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
               } disabled:opacity-40`}
             >
-              <ImagePlus className="h-5 w-5" />
+              {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
             </button>
-            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
-
-            <div className="relative shrink-0">
-              <button
-                ref={btnRef}
-                type="button"
-                onMouseDown={handleMicPress}
-                onTouchStart={handleMicPress}
-                disabled={isBusy}
-                title={isRecording ? 'Suelta para enviar' : 'Mantén presionado para grabar'}
-                className={`rounded-full p-2 transition-colors ${
-                  isRecording && isCancelZone ? 'bg-red-500 text-white'
-                  : isRecording              ? 'animate-pulse bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
-                  : isVoiceBusy              ? 'animate-pulse bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
-                  :                            'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
-                } disabled:opacity-40`}
-              >
-                {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-              </button>
-              {isRecording && !isCancelZone && (
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-6
-                                flex flex-col items-center gap-1 select-none pointer-events-none">
-                  {!isLocked ? (
-                    <>
-                      <Unlock className="h-4 w-4 text-gray-400" />
-                      <ChevronUp className="h-4 w-4 text-gray-400 animate-bounce" />
-                      <ChevronUp className="h-3 w-3 text-gray-400 opacity-60 -mt-2" />
-                      <ChevronUp className="h-2.5 w-2.5 text-gray-400 opacity-30 -mt-2" />
-                    </>
-                  ) : isFingerDown ? (
-                    <Lock className="h-5 w-5 text-red-500" />
-                  ) : (
-                    <Lock className="h-5 w-5 text-red-500 animate-pulse" />
-                  )}
-                </div>
-              )}
-            </div>
+            {isRecording && !isCancelZone && (
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-6
+                              flex flex-col items-center gap-1 select-none pointer-events-none">
+                {!isLocked ? (
+                  <>
+                    <Unlock className="h-4 w-4 text-gray-400" />
+                    <ChevronUp className="h-4 w-4 text-gray-400 animate-bounce" />
+                    <ChevronUp className="h-3 w-3 text-gray-400 opacity-60 -mt-2" />
+                    <ChevronUp className="h-2.5 w-2.5 text-gray-400 opacity-30 -mt-2" />
+                  </>
+                ) : isFingerDown ? (
+                  <Lock className="h-5 w-5 text-red-500" />
+                ) : (
+                  <Lock className="h-5 w-5 text-red-500 animate-pulse" />
+                )}
+              </div>
+            )}
           </div>
-          
+        ) : (!isRecording && canSend) ? (
           <button
             type="submit"
             disabled={!canSend}
-            className="bg-auteco-red text-white p-2 rounded-full hover:opacity-90 transition-all active:scale-90 disabled:opacity-40 z-10"
+            className="bg-auteco-red text-white p-2 rounded-full shrink-0 self-end hover:opacity-90 transition-all active:scale-90 disabled:opacity-40 z-10"
           >
             {isBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </button>
-        </div>
+        ) : null}
       </form>
     </div>
   );
