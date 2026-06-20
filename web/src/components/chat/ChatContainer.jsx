@@ -604,7 +604,7 @@ const ChatContainer = () => {
         <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
 
         {/* CENTRO: textarea u onda/timer */}
-        <div className="flex-1 min-w-0 overflow-hidden flex items-center">
+        <div className="flex-1 min-w-0 overflow-hidden flex items-center min-h-[44px]">
           {isRecording ? (
             isLocked ? (
               <div className="w-full min-w-0 flex items-center gap-2">
@@ -615,11 +615,11 @@ const ChatContainer = () => {
                 <button
                   type="button"
                   onClick={cancelarGrabacionTrabada}
-                  className="shrink-0 rounded-full p-2 bg-red-500 hover:bg-red-600 transition-colors"
+                  className="shrink-0 rounded-full p-[7px] bg-transparent border border-gray-400 hover:bg-gray-500/10 transition-colors"
                   title="Cancelar grabación"
                   aria-label="Cancelar grabación"
                 >
-                  <span className="block w-3.5 h-3.5 border-2 border-white rounded-[2px]" />
+                  <span className="block w-4 h-4 border border-red-500 rounded-[2px]" />
                 </button>
                 <button
                   type="button"
@@ -632,7 +632,7 @@ const ChatContainer = () => {
                 </button>
               </div>
             ) : isCancelZone ? (
-              <span className="w-full flex items-center justify-center gap-2 text-sm font-medium text-red-500 animate-pulse select-none">
+              <span className="w-full h-10 flex items-center justify-center gap-2 text-sm font-medium text-red-500 animate-pulse select-none">
                 <Trash2 className="h-4 w-4" />
                 Cancelar
               </span>
@@ -706,7 +706,7 @@ const ChatContainer = () => {
             disabled={!canSend}
             className="bg-auteco-red text-white p-2 rounded-full shrink-0 self-end hover:opacity-90 transition-all active:scale-90 disabled:opacity-40 z-10"
           >
-            {isBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            {isBusy ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
           </button>
         ) : null}
       </form>
