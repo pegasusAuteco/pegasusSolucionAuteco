@@ -51,6 +51,8 @@ const ChatContainer = () => {
   const pausedAudioRef = useRef(null);
   const isLockedRef = useRef(false);
   const lockRectRef = useRef(null);
+  const startPosRef = useRef(null);   // {x,y} del puntero al iniciar el gesto
+  const origRectRef = useRef(null);   // rect ORIGINAL del botón mic (sin translate)
 
   const user = useAuthStore((s) => s.user);
   const addToast = useToastStore((s) => s.addToast);
@@ -172,6 +174,20 @@ const ChatContainer = () => {
     setIsLocked(false);
     isLockedRef.current = false;
     lockRectRef.current = null;
+    resetMicDrag();
+  }, []);
+
+  // Snap-back animado del mic a su posición original + limpieza del arrastre
+  const resetMicDrag = useCallback(() => {
+    if (btnRef.current) {
+      btnRef.current.style.transition = 'transform 0.2s ease-out';
+      btnRef.current.style.transform = '';
+      setTimeout(() => {
+        if (btnRef.current) btnRef.current.style.transition = '';
+      }, 220);
+    }
+    startPosRef.current = null;
+    origRectRef.current = null;
   }, []);
 
   useEffect(() => {
@@ -373,6 +389,13 @@ const ChatContainer = () => {
       return; // descarta el mousedown sintético que el browser emite tras touchstart
     }
 
+    // Capturar posición inicial del puntero y rect ORIGINAL del botón
+    // (para el arrastre visual y para anclar la geometría de zonas).
+    const startX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
+    const startY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
+    startPosRef.current = { x: startX, y: startY };
+    origRectRef.current = btnRef.current?.getBoundingClientRect() ?? null;
+
     const handleRelease = (ev) => {
       if (isLockedRef.current) {
         // manos libres confirmado: soltó estando trabado.
@@ -385,6 +408,7 @@ const ChatContainer = () => {
         releaseHandlerRef.current = null;
         moveHandlerRef.current = null;
         lockRectRef.current = null;
+        resetMicDrag();
         setIsCancelZone(false);
         setIsFingerDown(false);
         return;
@@ -404,8 +428,10 @@ const ChatContainer = () => {
       } else {
         const x = ev.type.startsWith('touch') ? ev.changedTouches[0].clientX : ev.clientX;
         const y = ev.type.startsWith('touch') ? ev.changedTouches[0].clientY : ev.clientY;
-        if (btnRef.current) {
-          const r = btnRef.current.getBoundingClientRect();
+        // Usar el rect ORIGINAL (no el del botón desplazado por el arrastre)
+        // para clasificar cancelar al soltar.
+        const r = origRectRef.current ?? btnRef.current?.getBoundingClientRect();
+        if (r) {
           const centerX = r.left + r.width / 2;
           const dentroCorredor = Math.abs(x - centerX) < r.width / 2 + CANCEL_HORIZ;
           const arriba = y < r.top;
@@ -431,15 +457,25 @@ const ChatContainer = () => {
     const handleMove = (ev) => {
       const p = ev.touches ? ev.touches[0] : ev;
 
-      // Resolver el rect: el del botón si existe, o el cacheado al trabar
-      // (en modo trabado el mic se desmonta y btnRef.current es null).
+      // GEOMETRÍA: usar SIEMPRE un rect cacheado (estable), NUNCA el rect en
+      // vivo, que se contaminaría con el translate visual y descuadraría las
+      // zonas. Trabado → lockRectRef; si no → rect original del botón.
       let r;
-      if (btnRef.current) {
-        r = btnRef.current.getBoundingClientRect();
-      } else if (isLockedRef.current && lockRectRef.current) {
+      if (isLockedRef.current && lockRectRef.current) {
         r = lockRectRef.current;
+      } else if (origRectRef.current) {
+        r = origRectRef.current;
       } else {
         return;
+      }
+
+      // VISUAL: arrastrar el mic siguiendo el dedo (ambos ejes), por DOM
+      // directo, sin setState. La geometría de arriba NO se ve afectada.
+      if (startPosRef.current && btnRef.current) {
+        const dx = p.clientX - startPosRef.current.x;
+        const dy = p.clientY - startPosRef.current.y;
+        btnRef.current.style.transition = '';
+        btnRef.current.style.transform = `translate(${dx}px, ${dy}px)`;
       }
 
       const centerX = r.left + r.width / 2;

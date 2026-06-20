@@ -164,6 +164,10 @@ async def transcribe_and_answer(
         "dale like y suscríbete",
         "nos vemos en el próximo video",
         "hasta la próxima",
+        "suscríbete y activa notificaciones",
+        "suscríbete y activa las notificaciones",
+        "activa las notificaciones",
+        "dale like y activa las notificaciones",
     }
     # Frases largas/específicas que también atrapamos por contención (aunque
     # vengan rodeadas de otras alucinaciones). NO incluir palabras sueltas como
@@ -176,6 +180,8 @@ async def transcribe_and_answer(
         "no olvides suscribirte",
         "dale like y suscríbete",
         "nos vemos en el próximo video",
+        "suscríbete y activa",
+        "activa las notificaciones",
     )
     normalized = _normalize_text(transcription)
     is_silent = (
