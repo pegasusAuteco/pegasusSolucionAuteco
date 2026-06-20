@@ -101,36 +101,54 @@ export default function VoiceMessagePlayer({ src, autoPlay = false, accent = '#6
     : '--:--'
 
   return (
-    <div className="flex items-center gap-2 py-1 w-full min-w-[180px] max-w-[260px]">
+    <div className="flex items-center gap-3 px-3 py-2.5 mt-2 w-full min-w-[220px] max-w-[280px] bg-black/[0.04] dark:bg-white/[0.04] rounded-2xl border border-black/[0.04] dark:border-white/[0.04] backdrop-blur-sm transition-all duration-300">
       <audio ref={audioRef} src={src} preload="metadata" />
 
       <button
         onClick={togglePlay}
         disabled={loading}
-        className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full transition-opacity disabled:opacity-40 focus:outline-none"
+        className="group flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-full bg-white/60 dark:bg-black/30 hover:bg-white dark:hover:bg-black/50 transition-all duration-300 shadow-[0_2px_8px_rgba(0,0,0,0.06)] disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-black/10 dark:focus:ring-white/10 active:scale-95"
         style={{ color: accent }}
         aria-label={playing ? 'Pausar' : 'Reproducir'}
       >
         {playing
-          ? <Pause className="w-4 h-4" fill="currentColor" />
-          : <Play className="w-4 h-4" fill="currentColor" />
+          ? <Pause className="w-4 h-4 transition-transform group-hover:scale-105" fill="currentColor" strokeWidth={1.5} />
+          : <Play className="w-4 h-4 ml-0.5 transition-transform group-hover:scale-105" fill="currentColor" strokeWidth={1.5} />
         }
       </button>
 
-      <div
-        ref={barRef}
-        onClick={handleSeek}
-        className="flex-1 relative h-1.5 rounded-full cursor-pointer bg-black/10 dark:bg-white/20"
-        role="slider"
-        aria-label="Progreso del audio"
-      >
+      <div className="flex-1 flex flex-col justify-center min-w-0">
         <div
-          className="absolute inset-y-0 left-0 rounded-full"
-          style={{ width: `${progress}%`, backgroundColor: accent }}
-        />
+          ref={barRef}
+          onClick={handleSeek}
+          className="group/bar relative h-5 flex items-center cursor-pointer w-full"
+          role="slider"
+          aria-label="Progreso del audio"
+        >
+          {/* Fondo semi-transparente de la barra */}
+          <div className="absolute w-full h-1.5 bg-black/10 dark:bg-white/10 rounded-full transition-colors group-hover/bar:bg-black/15 dark:group-hover/bar:bg-white/15" />
+          
+          {/* Progreso activo con degradado sutil */}
+          <div
+            className="absolute h-1.5 left-0 rounded-full transition-all"
+            style={{ 
+              width: `${progress}%`, 
+              background: `linear-gradient(90deg, ${accent}88, ${accent})`,
+              boxShadow: `0 0 6px ${accent}40`
+            }}
+          />
+
+          {/* Indicador de posición (Thumb) minimalista */}
+          <div
+            className="absolute w-2.5 h-2.5 bg-white rounded-full shadow-[0_1px_3px_rgba(0,0,0,0.3)] opacity-0 group-hover/bar:opacity-100 transition-all duration-200 transform -translate-x-1/2 hover:scale-125"
+            style={{ left: `${progress}%`, backgroundColor: accent }}
+          >
+            <div className="absolute inset-0 bg-white rounded-full m-[2px]" />
+          </div>
+        </div>
       </div>
 
-      <span className="flex-shrink-0 text-[10px] tabular-nums opacity-60 min-w-[44px] text-right">
+      <span className="flex-shrink-0 text-[10px] font-mono font-medium tracking-wide text-gray-500/80 dark:text-gray-400/80 min-w-[50px] text-right select-none">
         {timeLabel}
       </span>
     </div>

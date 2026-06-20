@@ -39,7 +39,7 @@ export default function ChatBubble({ message, sender, text, timestamp }) {
           <VoiceMessagePlayer
             src={`/api/voice/audio/${message.audio_id}`}
             autoPlay={shouldAutoPlay}
-            accent={isIA ? '#E10600' : '#9ca3af'}
+            accent={isIA ? '#E10600' : '#0ea5e9'}
           />
         )}
         {displayTimestamp && (

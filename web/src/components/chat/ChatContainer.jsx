@@ -647,9 +647,8 @@ const ChatContainer = () => {
                 </button>
               </div>
             ) : isCancelZone ? (
-              <span className="w-full h-10 flex items-center justify-center gap-2 text-sm font-medium text-red-500 animate-pulse select-none">
-                <Trash2 className="h-4 w-4" />
-                Cancelar
+              <span className="w-full h-10 flex items-center justify-center text-red-500 animate-pulse select-none">
+                <Trash2 className="h-6 w-6" />
               </span>
             ) : (
               <div className="w-full min-w-0 flex items-center gap-2">
@@ -689,7 +688,7 @@ const ChatContainer = () => {
               disabled={isBusy}
               title={isRecording ? 'Suelta para enviar' : 'Mantén presionado para grabar'}
               className={`rounded-full p-2.5 transition-colors ${
-                isRecording && isCancelZone ? 'bg-red-500 text-white'
+                isRecording && isCancelZone ? 'text-red-600 dark:text-red-400'
                 : isRecording              ? 'animate-pulse bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
                 : isVoiceBusy              ? 'animate-pulse bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
                 :                            'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
