@@ -93,14 +93,11 @@ def _normalize_text(text: str) -> str:
 
 @lru_cache(maxsize=1)
 def _whisper_prompt() -> str:
-    """Vocabulario de dominio para sesgar la transcripción de Whisper hacia
-    las marcas de motos. El foco es evitar que 'TVS' se transcriba como 'TBS'."""
-    return (
-        "Conversación sobre motocicletas de las marcas TVS, Bajaj, "
-        "KTM, Benelli, Kawasaki, Kymco, Victory, Zontes y Auteco. "
-        "La marca TVS (no TBS) fabrica modelos como TVS Apache, "
-        "TVS Raider y TVS Sport."
-    )
+    """Vocabulario de dominio (lista de términos, NO frase) para sesgar la
+    transcripción hacia las marcas de motos y evitar 'TVS'->'TBS'. Formato de
+    lista para que Whisper no lo regurgite como transcripción en audio de baja
+    calidad (las frases narrativas sí se regurgitan; las listas casi no)."""
+    return "TVS, TBS, Bajaj, KTM, Benelli, Kawasaki, Kymco, Victory, Zontes, Auteco, Apache, Raider, Pulsar, Boxer."
 
 
 @router.post("/transcribe")
@@ -168,6 +165,8 @@ async def transcribe_and_answer(
         "suscríbete y activa las notificaciones",
         "activa las notificaciones",
         "dale like y activa las notificaciones",
+        "SUSCRIBETE Y DALE LIKE",
+        "SUSCRIBETE",
     }
     # Frases largas/específicas que también atrapamos por contención (aunque
     # vengan rodeadas de otras alucinaciones). NO incluir palabras sueltas como
@@ -182,6 +181,11 @@ async def transcribe_and_answer(
         "nos vemos en el próximo video",
         "suscríbete y activa",
         "activa las notificaciones",
+        # Regurgitaciones del prompt narrativo viejo de Whisper (audios en caché
+        # o variantes). Frases largas y específicas: NUNCA "tvs"/"apache"/"raider"
+        # sueltos, que son consultas legítimas.
+        "fabrica modelos como",
+        "tvs apache, tvs raider",
     )
     normalized = _normalize_text(transcription)
     is_silent = (
