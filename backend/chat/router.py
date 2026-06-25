@@ -1,7 +1,9 @@
 """
-Router principal del chat.
-Gestiona conversaciones y mensajes. El endpoint de enviar mensaje
-ejecuta el pipeline RAG completo (retrieval + generation).
+Main chat router.
+
+Manages conversations and messages. The send-message endpoint executes
+the full RAG pipeline (retrieval + generation) and streams responses
+via WebSocket for real-time chat.
 """
 from fastapi import APIRouter, HTTPException, Depends, Request, WebSocket, WebSocketDisconnect, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -23,19 +25,26 @@ from rag.generation.generator import generate_answer, generate_answer_stream
 from logs.log_service import ConversationLogService
 from config import settings
 
-HISTORY_LIMIT = 10  # mensajes anteriores que se pasan al LLM como contexto
+HISTORY_LIMIT = 10  # Previous messages passed to the LLM as context
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 security = HTTPBearer()
 
 
 def _now() -> str:
+    """Returns the current UTC timestamp in ISO format."""
     return datetime.now(timezone.utc).isoformat()
 
 
 async def get_current_user_id(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ) -> str:
+    """
+    FastAPI dependency that extracts and validates the user ID from the JWT token.
+
+    Raises:
+        HTTPException: 401 if the token is invalid or expired.
+    """
     try:
         payload = jwt.decode(
             credentials.credentials,
@@ -48,23 +57,30 @@ async def get_current_user_id(
 
 
 def get_log_service(request: Request) -> ConversationLogService:
+    """FastAPI dependency that retrieves the ConversationLogService from app state."""
     return request.app.state.log_service
 
 
 def get_conversations_col(request: Request):
+    """
+    FastAPI dependency that retrieves the MongoDB conversations collection.
+
+    Raises:
+        HTTPException: 503 if MongoDB is not available.
+    """
     if getattr(request.app.state, "mongo_db", None) is None:
         raise HTTPException(status_code=503, detail="Servicio de base de datos de chat no disponible (MongoDB).")
     return request.app.state.mongo_db["conversations"]
 
 
-# ─── Endpoints de Conversaciones ──────────────────────────────────────────────
+# ─── Conversation Endpoints ──────────────────────────────────────────────────
 
 @router.get("/conversations", response_model=list[ConversationResponse])
 async def list_conversations(
     user_id: str = Depends(get_current_user_id),
     col=Depends(get_conversations_col),
 ):
-    """Lista las conversaciones del usuario autenticado."""
+    """Lists all conversations for the authenticated user, sorted by most recent."""
     cursor = col.find({"user_id": user_id}).sort("created_at", -1)
     docs = await cursor.to_list(length=100)
     return [
@@ -86,7 +102,7 @@ async def create_conversation(
     log_service: ConversationLogService = Depends(get_log_service),
     col=Depends(get_conversations_col),
 ):
-    """Crea una nueva conversación asociada al usuario autenticado."""
+    """Creates a new conversation associated with the authenticated user."""
     now = _now()
     conv_id = str(uuid4())
     conv = {
@@ -107,7 +123,7 @@ async def delete_all_conversations(
     log_service: ConversationLogService = Depends(get_log_service),
     col=Depends(get_conversations_col),
 ):
-    """Elimina todas las conversaciones del usuario autenticado."""
+    """Deletes all conversations for the authenticated user."""
     docs = await col.find({"user_id": user_id}).to_list(length=1000)
     count = len(docs)
     await col.delete_many({"user_id": user_id})
@@ -126,7 +142,7 @@ async def rename_conversation(
     user_id: str = Depends(get_current_user_id),
     col=Depends(get_conversations_col),
 ):
-    """Renombra una conversación del usuario autenticado."""
+    """Renames a conversation belonging to the authenticated user."""
     conv = await col.find_one({"id": conversation_id, "user_id": user_id})
     if not conv:
         raise HTTPException(status_code=404, detail="Conversación no encontrada")
@@ -145,7 +161,7 @@ async def delete_conversation(
     log_service: ConversationLogService = Depends(get_log_service),
     col=Depends(get_conversations_col),
 ):
-    """Elimina una conversación y su historial de mensajes."""
+    """Deletes a conversation and its message history."""
     conv = await col.find_one({"id": conversation_id, "user_id": user_id})
     if not conv:
         raise HTTPException(status_code=404, detail="Conversación no encontrada")
@@ -156,7 +172,7 @@ async def delete_conversation(
         pass
 
 
-# ─── Endpoints de Mensajes ────────────────────────────────────────────────────
+# ─── Message Endpoints ────────────────────────────────────────────────────────
 
 @router.get(
     "/conversations/{conversation_id}/messages",
@@ -168,7 +184,7 @@ async def get_messages(
     log_service: ConversationLogService = Depends(get_log_service),
     col=Depends(get_conversations_col),
 ):
-    """Retorna el historial completo de mensajes de una conversación del usuario."""
+    """Returns the full message history for a conversation."""
     conv = await col.find_one({"id": conversation_id, "user_id": user_id})
     if not conv:
         raise HTTPException(status_code=404, detail="Conversación no encontrada")
@@ -190,18 +206,18 @@ async def send_message(
     col=Depends(get_conversations_col),
 ):
     """
-    Recibe el mensaje del usuario y ejecuta el pipeline RAG completo:
-    1. Guarda el mensaje del usuario en MongoDB/Redis
-    2. Recupera el historial reciente para dar contexto al LLM
-    3. Recupera chunks relevantes de manuales (vector search)
-    4. Genera respuesta con GPT + historial + contexto RAG
-    5. Guarda y retorna la respuesta del asistente
+    Receives a user message and executes the full RAG pipeline:
+    1. Saves the user message to MongoDB/Redis
+    2. Retrieves recent history for LLM context
+    3. Retrieves relevant manual chunks (vector search)
+    4. Generates response with GPT + history + RAG context
+    5. Saves and returns the assistant response
     """
     conv = await col.find_one({"id": conversation_id, "user_id": user_id})
     if not conv:
         raise HTTPException(status_code=404, detail="Conversación no encontrada")
 
-    # 1. Guardar mensaje del usuario
+    # 1. Save user message
     user_msg = {
         "id": str(uuid4()),
         "conversation_id": conversation_id,
@@ -211,27 +227,27 @@ async def send_message(
     }
     await log_service.append_message(user_id, conversation_id, user_msg)
 
-    # 2. Obtener historial reciente (sin el mensaje que acaba de guardarse)
+    # 2. Get recent history (excluding the message just saved)
     history = await log_service.get_context(
         user_id, conversation_id, limit=HISTORY_LIMIT + 1
     )
-    history = history[:-1]  # excluir el mensaje actual que ya se pasa por separado
+    history = history[:-1]  # Exclude current message (passed separately)
 
-    # 3. RAG: recuperar chunks relevantes de manuales
+    # 3. RAG: retrieve relevant manual chunks
     try:
         context_chunks = retrieve_context(body.content)
     except Exception as e:
         context_chunks = []
-        print(f"⚠️ Error en retrieval: {e}")
+        print(f"Error in retrieval: {e}")
 
-    # 4. Generar respuesta con LLM + historial + contexto RAG
+    # 4. Generate response with LLM + history + RAG context
     try:
         answer = generate_answer(body.content, context_chunks, history=history)
     except Exception as e:
         answer = f"Lo siento, ocurrió un error al generar la respuesta: {str(e)}"
-        print(f"⚠️ Error en generación: {e}")
+        print(f"Error in generation: {e}")
 
-    # 5. Guardar respuesta del asistente
+    # 5. Save assistant response
     assistant_msg = {
         "id": str(uuid4()),
         "conversation_id": conversation_id,
@@ -241,7 +257,7 @@ async def send_message(
     }
     await log_service.append_message(user_id, conversation_id, assistant_msg)
 
-    # Actualizar título con la primera pregunta del usuario
+    # Auto-title: use the first user message as conversation title
     all_msgs = await log_service.get_context(user_id, conversation_id, limit=200)
     if len(all_msgs) == 2:
         title = body.content[:50] + ("..." if len(body.content) > 50 else "")
@@ -262,11 +278,16 @@ async def chat_websocket(
     token: str = Query(...),
 ):
     """
-    WebSocket bidireccional para chat con streaming.
-    El JWT llega como query param porque el browser no soporta
-    headers personalizados en el handshake WebSocket.
+    Bidirectional WebSocket for real-time chat with streaming.
+
+    The JWT token is passed as a query parameter because browsers don't
+    support custom headers in WebSocket handshakes.
+
+    Message types:
+    - 'message': Text message from user, triggers RAG pipeline with streaming tokens
+    - 'audio' / 'image': Not yet implemented
     """
-    # Verificar JWT antes de aceptar la conexión
+    # Verify JWT before accepting the connection
     try:
         payload = jwt.decode(
             token,
@@ -297,7 +318,7 @@ async def chat_websocket(
             if msg_type == "message":
                 content = data.get("content", "")
 
-                # Guardar mensaje del usuario
+                # Save user message
                 user_msg = {
                     "id": str(uuid4()),
                     "conversation_id": conversation_id,
@@ -307,20 +328,20 @@ async def chat_websocket(
                 }
                 await log_service.append_message(user_id, conversation_id, user_msg)
 
-                # Obtener historial reciente
+                # Get recent history
                 history = await log_service.get_context(
                     user_id, conversation_id, limit=HISTORY_LIMIT + 1
                 )
                 history = history[:-1]
 
-                # RAG: retrieval en thread para no bloquear el event loop
+                # RAG: retrieval in a thread to avoid blocking the event loop
                 try:
                     context_chunks = await asyncio.to_thread(retrieve_context, content)
                 except Exception as e:
                     context_chunks = []
-                    print(f"⚠️ [ws] Error en retrieval: {e}")
+                    print(f"[ws] Error in retrieval: {e}")
 
-                # Streaming de tokens
+                # Stream tokens to client
                 full_answer = ""
                 try:
                     async for delta in generate_answer_stream(content, context_chunks, history=history):
@@ -330,10 +351,10 @@ async def chat_websocket(
                         await websocket.send_json({"type": "token", "content": delta})
                 except Exception as e:
                     await websocket.send_json({"type": "error", "message": str(e)})
-                    print(f"⚠️ [ws] Error en generación: {e}")
+                    print(f"[ws] Error in generation: {e}")
                     continue
 
-                # Guardar respuesta del asistente
+                # Save assistant response
                 assistant_msg_id = str(uuid4())
                 assistant_msg = {
                     "id": assistant_msg_id,
@@ -344,7 +365,7 @@ async def chat_websocket(
                 }
                 await log_service.append_message(user_id, conversation_id, assistant_msg)
 
-                # Actualizar título con la primera pregunta
+                # Auto-title: use the first user message as conversation title
                 all_msgs = await log_service.get_context(user_id, conversation_id, limit=200)
                 if len(all_msgs) == 2:
                     title = content[:50] + ("..." if len(content) > 50 else "")

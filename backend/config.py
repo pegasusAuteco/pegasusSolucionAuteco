@@ -1,7 +1,8 @@
-"""Configuración central del backend usando variables de entorno.
+"""
+Central configuration module for the Pegasus backend.
 
-Un solo sistema: la clase Settings de pydantic_settings lee el archivo .env
-y expone todas las variables como atributos tipados.
+Uses pydantic_settings to load environment variables from the .env file
+and expose them as typed attributes. All configuration values are centralized here.
 """
 import os
 from dotenv import load_dotenv
@@ -10,6 +11,18 @@ from pydantic_settings import BaseSettings
 load_dotenv()
 
 class Settings(BaseSettings):
+    """
+    Application settings loaded from environment variables / .env file.
+
+    Groups:
+    - SUPABASE: Vector store and database connection
+    - OPENAI/LLM: AI model configuration
+    - VOICE/TTS: Text-to-speech provider settings
+    - VECTOR_STORE: Embedding search parameters
+    - DATABASE: PostgreSQL connection
+    - AUTH: JWT authentication settings
+    - BACKEND: Server configuration
+    """
     # === SUPABASE ===
     SUPABASE_URL: str = ""
     SUPABASE_SERVICE_KEY: str = ""
@@ -45,9 +58,8 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-# ── Variables globales (alias para compatibilidad con imports existentes) ──
-# El código del RAG (retriever.py, generator.py) importa directamente estas
-# variables, así que las exponemos como alias del objeto settings.
+# Global aliases for backward compatibility with existing imports.
+# RAG code (retriever.py, generator.py) imports these variables directly.
 SUPABASE_URL = settings.SUPABASE_URL
 SUPABASE_SERVICE_KEY = settings.SUPABASE_SERVICE_KEY
 OPENAI_API_KEY = settings.OPENAI_API_KEY
@@ -58,7 +70,13 @@ VECTOR_MATCH_COUNT = settings.VECTOR_MATCH_COUNT
 
 
 def validate_config() -> None:
-    """Verifica que las variables críticas estén configuradas."""
+    """
+    Validates that all critical environment variables are configured.
+
+    Raises:
+        RuntimeError: If any required variable (SUPABASE_URL, SUPABASE_SERVICE_KEY,
+                      or OPENAI_API_KEY) is missing or empty.
+    """
     missing = []
     if not settings.SUPABASE_URL:
         missing.append("SUPABASE_URL")
@@ -68,5 +86,5 @@ def validate_config() -> None:
         missing.append("OPENAI_API_KEY")
     if missing:
         raise RuntimeError(
-            f"❌ Variables de entorno faltantes en .env: {', '.join(missing)}"
+            f"Missing required environment variables in .env: {', '.join(missing)}"
         )

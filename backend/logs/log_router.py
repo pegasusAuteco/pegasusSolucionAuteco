@@ -1,11 +1,14 @@
-# ============================================================
-# INTEGRATION NOTE FOR BACKEND DEVELOPER:
-# Add the following lines to backend/main.py:
-#
-#   from logs.log_router import router as logs_router
-#   app.include_router(logs_router, prefix="/api/logs", tags=["logs"])
-#
-# ============================================================
+"""
+REST API router for conversation logging operations.
+
+Provides endpoints for session management, message appending,
+context retrieval, and mechanic history queries.
+
+Integration:
+    Include in main.py:
+        from logs.log_router import router as logs_router
+        app.include_router(logs_router, prefix="/logs", tags=["logs"])
+"""
 from fastapi import APIRouter, HTTPException
 from .log_schemas import SessionCreate, MessageAppend, SessionResponse
 from .connections import get_redis, get_mongo_db
@@ -15,6 +18,7 @@ router = APIRouter()
 
 
 async def get_service() -> ConversationLogService:
+    """Creates a fresh ConversationLogService with current Redis/MongoDB connections."""
     redis = await get_redis()
     mongo = await get_mongo_db()
     return ConversationLogService(redis, mongo)
@@ -22,6 +26,7 @@ async def get_service() -> ConversationLogService:
 
 @router.post("/session", response_model=dict, summary="Create a new conversation session")
 async def create_session(payload: SessionCreate):
+    """Creates a new conversation session in Redis with optional motorcycle context."""
     try:
         service = await get_service()
         motorcycle = payload.motorcycle.model_dump() if payload.motorcycle else None
@@ -33,6 +38,7 @@ async def create_session(payload: SessionCreate):
 
 @router.post("/message", response_model=dict, summary="Append a message to a session")
 async def append_message(payload: MessageAppend):
+    """Appends a message to an active session, auto-flushing to MongoDB when threshold is reached."""
     try:
         service = await get_service()
         session = await service.append_message(
@@ -47,6 +53,7 @@ async def append_message(payload: MessageAppend):
 
 @router.get("/context/{mechanic_id}/{session_id}", summary="Get active session context")
 async def get_context(mechanic_id: str, session_id: str, limit: int = 20):
+    """Retrieves recent messages for a session from Redis or MongoDB fallback."""
     try:
         service = await get_service()
         messages = await service.get_context(mechanic_id, session_id, limit)
@@ -57,6 +64,7 @@ async def get_context(mechanic_id: str, session_id: str, limit: int = 20):
 
 @router.delete("/session/{mechanic_id}/{session_id}", summary="Close session and persist to MongoDB")
 async def close_session(mechanic_id: str, session_id: str):
+    """Closes a session: flushes remaining messages to MongoDB and deletes from Redis."""
     try:
         service = await get_service()
         await service.close_session(mechanic_id, session_id)
@@ -67,6 +75,7 @@ async def close_session(mechanic_id: str, session_id: str):
 
 @router.get("/history/{mechanic_id}", summary="Get all sessions for a mechanic")
 async def get_mechanic_history(mechanic_id: str, limit: int = 10):
+    """Retrieves all session records for a mechanic, sorted by most recent."""
     try:
         service = await get_service()
         history = await service.get_mechanic_history(mechanic_id, limit)

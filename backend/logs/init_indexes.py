@@ -1,6 +1,12 @@
 """
-Run this script once to initialize MongoDB indexes for conversation_logs.
-Usage: python -m logs.init_indexes
+MongoDB index initialization script.
+
+Creates indexes for the conversation_logs collection to optimize
+query performance for mechanic lookups, session retrieval, and
+automatic log expiration (TTL).
+
+Usage:
+    python -m logs.init_indexes
 """
 import asyncio
 import os
@@ -9,6 +15,16 @@ from pymongo import DESCENDING
 
 
 async def create_indexes():
+    """
+    Creates MongoDB indexes for the conversation_logs collection.
+
+    Indexes:
+    - (mechanic_id, started_at DESC): For mechanic session history queries
+    - (session_id) UNIQUE: For fast session lookups
+    - (motorcycle.model): For filtering by motorcycle model
+    - (tags): For tag-based filtering
+    - (started_at) TTL: Auto-delete logs older than 1 year
+    """
     uri = os.getenv("MONGO_URI", "mongodb://localhost:27017")
     db_name = os.getenv("MONGO_DB_NAME", "motorconnect_logs")
     client = AsyncIOMotorClient(uri)

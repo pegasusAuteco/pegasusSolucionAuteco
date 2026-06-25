@@ -1,4 +1,10 @@
-"""Cliente Supabase para búsqueda vectorial en manuales_chunks."""
+"""
+Supabase client for vector search operations.
+
+Provides functions for checking motorcycle model existence and
+performing similarity searches across manuals and fault databases
+using embedding vectors.
+"""
 from supabase import create_client, Client
 from config import SUPABASE_URL, SUPABASE_SERVICE_KEY, VECTOR_TABLE, VECTOR_MATCH_COUNT
 
@@ -6,7 +12,12 @@ _client: Client | None = None
 
 
 def get_supabase() -> Client:
-    """Devuelve el cliente Supabase (singleton)."""
+    """
+    Returns the Supabase client singleton.
+
+    Creates the client on first call using credentials from config.
+    Raises RuntimeError if credentials are not configured.
+    """
     global _client
     if _client is None:
         if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
@@ -18,27 +29,40 @@ def get_supabase() -> Client:
 
 
 def check_model_exists(motocicleta: str, table_name: str) -> bool:
-    """Verifica si un modelo de moto existe en la tabla dada."""
+    """
+    Checks if a motorcycle model exists in the specified table.
+
+    Uses the first keyword of the model name for flexible matching
+    (e.g. "Ninja" matches "Ninja 400").
+
+    Returns True if no motocicleta is specified or if the model is found.
+    Returns True on error as a safety measure (allows search to proceed).
+    """
     if not motocicleta or motocicleta.lower() == "general":
         return True
     
     client = get_supabase()
     try:
-        # Extraemos la primera palabra clave para buscar de forma más flexible (ej. "Ninja" en lugar de "Ninja 400")
+        # Extract the first keyword for flexible search (e.g. "Ninja" instead of "Ninja 400")
         palabra_clave = motocicleta.lower().replace("-", " ").split()[0]
         columna = "fuente" if table_name == "manuales_chunks" else "modelo"
         response = client.table(table_name).select("id").ilike(columna, f"%{palabra_clave}%").limit(1).execute()
         return len(response.data) > 0
     except Exception as e:
-        print(f"⚠️ Error verificando existencia del modelo {motocicleta} en {table_name}: {e}")
-        return True  # Por precaución, si falla la verificación, permitimos la búsqueda
+        print(f"Error checking model existence for {motocicleta} in {table_name}: {e}")
+        return True  # Allow search to proceed on verification failure
 
 
 def search_similar_chunks(query_embedding: list[float], motocicleta: str = "", top_k: int = VECTOR_MATCH_COUNT, threshold: float = 0.35) -> list[dict]:
-    """Busca en manuales_chunks (manuales técnicos)."""
+    """
+    Searches the manuales_chunks table for similar content.
+
+    Uses Supabase RPC for vector similarity search, then filters locally
+    by similarity threshold and motorcycle model (source field).
+    """
     client = get_supabase()
     try:
-        # Traemos más resultados para poder filtrar localmente sin quedarnos sin datos
+        # Fetch more results to allow local filtering without running out of data
         response = client.rpc(
             "match_manuales_chunks",
             {
@@ -47,18 +71,18 @@ def search_similar_chunks(query_embedding: list[float], motocicleta: str = "", t
             },
         ).execute()
         
-        # Filtramos por umbral de similitud y por modelo (fuente)
+        # Filter by similarity threshold and model (source)
         resultados = response.data or []
         resultados_filtrados = []
         for r in resultados:
             if r.get("similarity", 1.0) < threshold:
                 continue
             
-            # Filtro por fuente (título del manual)
+            # Filter by source (manual title)
             fuente = r.get("fuente", "").lower().replace("-", " ")
             mot_norm = motocicleta.lower().replace("-", " ")
             if motocicleta and motocicleta.lower() != "general":
-                # Verificamos que la primera palabra del modelo esté en la fuente
+                # Check if the first word of the model is in the source
                 palabras = mot_norm.split()
                 if palabras and palabras[0] not in fuente:
                     continue
@@ -69,15 +93,20 @@ def search_similar_chunks(query_embedding: list[float], motocicleta: str = "", t
                 
         return resultados_filtrados
     except Exception as e:
-        print(f"⚠️ Error RPC manuales: {e}")
+        print(f"Error in manuals RPC: {e}")
         return []
 
 
 def search_similar_fallas(query_embedding: list[float], motocicleta: str = "", top_k: int = 3, threshold: float = 0.35) -> list[dict]:
-    """Busca en fallas_diagnostico (base de datos de problemas y soluciones)."""
+    """
+    Searches the fallas_diagnostico table for similar faults.
+
+    Uses Supabase RPC for vector similarity search, then filters locally
+    by similarity threshold and motorcycle model.
+    """
     client = get_supabase()
     try:
-        # Traemos más resultados para filtrar localmente
+        # Fetch more results for local filtering
         response = client.rpc(
             "match_fallas_diagnostico",
             {
@@ -86,7 +115,7 @@ def search_similar_fallas(query_embedding: list[float], motocicleta: str = "", t
             },
         ).execute()
         
-        # Filtramos por umbral y modelo
+        # Filter by threshold and model
         resultados = response.data or []
         resultados_filtrados = []
         for r in resultados:
@@ -106,5 +135,5 @@ def search_similar_fallas(query_embedding: list[float], motocicleta: str = "", t
                 
         return resultados_filtrados
     except Exception as e:
-        print(f"⚠️ Error RPC fallas: {e}")
+        print(f"Error in faults RPC: {e}")
         return []

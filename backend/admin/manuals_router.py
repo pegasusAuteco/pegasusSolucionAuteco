@@ -1,3 +1,10 @@
+"""
+Manuals management router for uploading, deleting, and listing motorcycle manuals.
+
+Handles PDF processing with PyMuPDF, embedding generation via OpenAI,
+structured data extraction using LLM, and storage in Supabase vector database.
+Mounted at /admin prefix.
+"""
 import os
 import json
 import logging
@@ -13,10 +20,11 @@ from vector_store.supabase_client import get_supabase
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# Directorio donde se guardan las imágenes en el frontend
+# Directory where motorcycle images are stored in the frontend
 FRONTEND_IMAGES_DIR = Path(__file__).resolve().parent.parent.parent / "web" / "public" / "images" / "motos"
 
 async def generate_embedding_async(client: AsyncOpenAI, text: str) -> list[float]:
+    """Generates an embedding vector for the given text using OpenAI's async client."""
     text = text.replace('\n', ' ')
     response = await client.embeddings.create(
         model=EMBEDDING_MODEL,
@@ -25,7 +33,15 @@ async def generate_embedding_async(client: AsyncOpenAI, text: str) -> list[float
     return response.data[0].embedding
 
 async def extract_structured_data(client: AsyncOpenAI, text: str) -> dict:
-    """Extrae titulo, descripcion, componentes y procedimientos usando LLM en formato JSON."""
+    """
+    Extracts structured data from manual page text using LLM.
+
+    Returns a JSON object with keys:
+    - titulo: Page title/summary
+    - descripcion: Brief content description
+    - componentes: List of parts with descriptions and part numbers
+    - procedimientos: List of steps/procedures/warnings
+    """
     prompt = f"""
     Eres un asistente experto analizando manuales de motocicletas. Extrae la información del siguiente texto de una página en un objeto JSON estricto con las siguientes claves:
     - "titulo": Resumen o título de lo que trata la página (ej. "CALCOMANÍAS NEGRO NEBULOSA", "SISTEMA ELÉCTRICO").
@@ -49,7 +65,7 @@ async def extract_structured_data(client: AsyncOpenAI, text: str) -> dict:
         content = response.choices[0].message.content
         return json.loads(content)
     except Exception as e:
-        logger.error(f"Error extrayendo datos estructurados: {e}")
+        logger.error(f"Error extracting structured data: {e}")
         return {
             "titulo": "Información del Manual",
             "descripcion": text[:150] + "...",
@@ -58,6 +74,10 @@ async def extract_structured_data(client: AsyncOpenAI, text: str) -> dict:
         }
 
 async def process_page(page_num: int, page_text: str, name: str, image_url: str, openai_client: AsyncOpenAI, supabase):
+    """
+    Processes a single PDF page: extracts structured data, generates embedding,
+    and inserts the chunk into Supabase.
+    """
     if not page_text:
         page_text = f"Portada o página sin texto del manual {name}"
 
@@ -85,13 +105,22 @@ async def upload_manual(
     pdf: UploadFile = File(...),
     image: UploadFile = File(None)
 ):
+    """
+    Uploads a motorcycle manual PDF and processes it into the vector database.
+
+    Steps:
+    1. Saves the optional cover image to the frontend public directory
+    2. Reads and parses the PDF using PyMuPDF
+    3. Processes each page in batches (5 concurrent) for embedding + structured extraction
+    4. Inserts all chunks into Supabase vector database
+    """
     if not OPENAI_API_KEY:
         raise HTTPException(status_code=500, detail="Falta OPENAI_API_KEY en el servidor")
 
     openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
     supabase = get_supabase()
 
-    # 1. Guardar la imagen si fue proporcionada
+    # 1. Save the image if provided
     image_url = None
     if image:
         if image.content_type != "image/png" and not (image.filename or "").lower().endswith(".png"):
@@ -105,15 +134,15 @@ async def upload_manual(
         
         image_url = f"/images/motos/{safe_filename}"
 
-    # 2. Leer y procesar el PDF
+    # 2. Read and process the PDF
     try:
         pdf_content = await pdf.read()
         doc = fitz.open(stream=pdf_content, filetype="pdf")
     except Exception as e:
-        logger.error(f"Error leyendo el PDF: {e}")
+        logger.error(f"Error reading PDF: {e}")
         raise HTTPException(status_code=400, detail="Error leyendo el archivo PDF")
 
-    # 3. Procesar página por página en lotes (batching)
+    # 3. Process page by page in batches
     chunks_inserted = 0
     pages_to_process = []
     
@@ -134,7 +163,7 @@ async def upload_manual(
             chunks_inserted += len(batch)
 
     except Exception as e:
-        logger.error(f"Error procesando el PDF: {e}")
+        logger.error(f"Error processing PDF: {e}")
         raise HTTPException(status_code=500, detail=f"Error procesando el PDF y creando embeddings: {str(e)}")
 
     return {
@@ -146,24 +175,28 @@ async def upload_manual(
 
 @router.delete("/manuals/{name}")
 async def delete_manual(name: str):
-    """Elimina un manual y sus chunks de Supabase."""
+    """Deletes a manual and all its chunks from Supabase."""
     supabase = get_supabase()
     try:
         response = supabase.table(VECTOR_TABLE).delete().eq("fuente", name).execute()
         deleted_count = len(response.data or [])
         return {"message": f"Manual '{name}' eliminado", "deleted_chunks": deleted_count}
     except Exception as e:
-        logger.error(f"Error eliminando manual: {e}")
+        logger.error(f"Error deleting manual: {e}")
         raise HTTPException(status_code=500, detail=f"Error eliminando manual: {str(e)}")
 
 @router.get("/manuals")
 async def get_manuals_catalog():
-    """Obtiene los manuales distintos almacenados en Supabase (para el inventario)."""
+    """
+    Returns the catalog of all distinct manuals stored in Supabase.
+
+    Fetches the first page of each manual to retrieve the cover image URL.
+    """
     supabase = get_supabase()
     
-    # Obtenemos la primera página de cada manual para recuperar el image_url de "datos"
-    # Dado que no podemos hacer SELECT DISTINCT ON en el REST de Supabase fácilmente sin RPC,
-    # simplemente traemos todos y agrupamos en memoria (o filtramos por página = 1)
+    # Fetch first page of each manual to get image_url from "datos"
+    # Since we can't easily do SELECT DISTINCT via Supabase REST without RPC,
+    # we fetch all and group in memory (filtering by page = 1)
     try:
         response = supabase.table(VECTOR_TABLE).select("fuente, datos").eq("pagina", 1).execute()
         manuals = response.data or []
@@ -179,7 +212,7 @@ async def get_manuals_catalog():
                     datos = {}
             image = datos.get("image_url", None)
             
-            # Evitar duplicados si hay varios con pagina 1 por error
+            # Avoid duplicates if multiple page-1 entries exist due to errors
             if not any(cat["name"] == name for cat in catalog):
                 catalog.append({
                     "id": f"DB-{name}",
@@ -191,5 +224,5 @@ async def get_manuals_catalog():
         
         return catalog
     except Exception as e:
-        logger.error(f"Error obteniendo catálogo de manuales: {e}")
+        logger.error(f"Error fetching manuals catalog: {e}")
         return []

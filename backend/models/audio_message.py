@@ -1,3 +1,9 @@
+"""
+Audio message SQLAlchemy ORM model.
+
+Defines the 'audio_messages' table for storing voice recordings
+from user and assistant interactions.
+"""
 import datetime
 import uuid
 
@@ -8,6 +14,12 @@ from database import Base
 
 
 class AudioMessage(Base):
+    """
+    ORM model for storing audio messages in PostgreSQL.
+
+    Stores raw audio bytes with metadata for conversation association,
+    user attribution, and MIME type for proper playback.
+    """
     __tablename__ = "audio_messages"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     conversation_id = Column(String, nullable=False, index=True)

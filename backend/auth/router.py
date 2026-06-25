@@ -1,3 +1,9 @@
+"""
+Authentication router with /register and /login endpoints.
+
+Handles user registration with validation and login with JWT token generation.
+All passwords are hashed; JWT tokens are issued on successful login.
+"""
 import logging
 
 from fastapi import APIRouter, HTTPException
@@ -11,6 +17,11 @@ logger = logging.getLogger(__name__)
 
 @router.post("/register", response_model=RegisterResponse, status_code=201)
 async def register(payload: RegisterRequest):
+    """
+    Registers a new user account.
+
+    Returns 201 with user data on success, or 409 if the email is already taken.
+    """
     service = AuthService()
     try:
         user = await service.register_user(
@@ -37,6 +48,11 @@ async def register(payload: RegisterRequest):
 
 @router.post("/login", response_model=LoginResponse)
 async def login(payload: LoginRequest):
+    """
+    Authenticates a user and returns a JWT access token.
+
+    Returns 401 if credentials are invalid.
+    """
     service = AuthService()
     try:
         user = await service.authenticate_user(payload.email, payload.password)

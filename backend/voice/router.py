@@ -1,3 +1,10 @@
+"""
+Voice router for audio transcription and text-to-speech responses.
+
+Handles the full voice pipeline: receives audio via WebSocket/HTTP,
+transcribes with Whisper, runs RAG, generates TTS response, and
+stores audio files for later retrieval.
+"""
 import base64
 from functools import lru_cache
 from uuid import uuid4
@@ -25,6 +32,7 @@ _openai_client: OpenAI | None = None
 
 
 def _get_openai() -> OpenAI:
+    """Returns a lazily-initialized OpenAI client singleton."""
     global _openai_client
     if _openai_client is None:
         _openai_client = OpenAI(api_key=settings.OPENAI_API_KEY)
@@ -34,6 +42,12 @@ def _get_openai() -> OpenAI:
 async def get_current_user_id(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ) -> str:
+    """
+    FastAPI dependency that extracts and validates the user ID from the JWT token.
+
+    Raises:
+        HTTPException: 401 if the token is invalid or expired.
+    """
     try:
         payload = jwt.decode(
             credentials.credentials,
@@ -46,24 +60,28 @@ async def get_current_user_id(
 
 
 def get_log_service(request: Request) -> ConversationLogService:
+    """FastAPI dependency that retrieves the ConversationLogService from app state."""
     return request.app.state.log_service
 
 
 def get_conversations_col(request: Request):
+    """FastAPI dependency that retrieves the MongoDB conversations collection."""
     return request.app.state.mongo_db["conversations"]
 
 
 def _now() -> str:
+    """Returns the current UTC timestamp in ISO format."""
     from datetime import datetime, timezone
     return datetime.now(timezone.utc).isoformat()
 
 
 def _looks_like_noise(result) -> bool:
-    """True si los segmentos de Whisper sugieren ruido / sin habla clara.
+    """
+    Returns True if Whisper segments suggest noise / no clear speech.
 
-    Promedia las señales de confianza por segmento (no_speech_prob y
-    avg_logprob). Umbrales conservadores para no marcar consultas reales
-    como silencio. Si el SDK no expone segments, no decide (False).
+    Averages confidence signals per segment (no_speech_prob and avg_logprob).
+    Conservative thresholds to avoid marking real queries as silence.
+    Returns False if the SDK doesn't expose segments.
     """
     import statistics
 
@@ -76,13 +94,15 @@ def _looks_like_noise(result) -> bool:
     avg_no_speech = statistics.mean(no_speech) if no_speech else 0
     avg_logprob = statistics.mean(logprobs) if logprobs else 0
 
-    # Alta probabilidad de no-habla O confianza media muy baja.
+    # High no-speech probability OR very low average log probability
     return avg_no_speech > 0.6 or avg_logprob < -1.0
 
 
 def _normalize_text(text: str) -> str:
-    """Normaliza para comparar contra alucinaciones: minúsculas, sin signos
-    de puntuación de apertura/cierre ni espacios sobrantes."""
+    """
+    Normalizes text for hallucination comparison: lowercase, strips
+    opening/closing punctuation and excess whitespace.
+    """
     import re
 
     cleaned = text.lower().strip()
@@ -93,10 +113,12 @@ def _normalize_text(text: str) -> str:
 
 @lru_cache(maxsize=1)
 def _whisper_prompt() -> str:
-    """Vocabulario de dominio (lista de términos, NO frase) para sesgar la
-    transcripción hacia las marcas de motos y evitar 'TVS'->'TBS'. Formato de
-    lista para que Whisper no lo regurgite como transcripción en audio de baja
-    calidad (las frases narrativas sí se regurgitan; las listas casi no)."""
+    """
+    Domain vocabulary list (not a phrase) to bias Whisper transcription
+    toward motorcycle brand names and avoid 'TVS'->'TBS' errors.
+    List format prevents Whisper from regurgitating it as audio in
+    low-quality segments (narrative phrases are regurgitated; lists are not).
+    """
     return "TVS, TBS, Bajaj, KTM, Benelli, Kawasaki, Kymco, Victory, Zontes, Auteco, Apache, Raider, Pulsar, Boxer."
 
 
@@ -109,6 +131,18 @@ async def transcribe_and_answer(
     col=Depends(get_conversations_col),
     session: AsyncSession = Depends(get_session),
 ):
+    """
+    Main voice endpoint: receives audio, transcribes, generates RAG response, returns TTS.
+
+    Pipeline:
+    1. Read and validate audio bytes
+    2. Transcribe with OpenAI Whisper (Spanish)
+    3. Detect silent/noise audio and Whisper hallucinations
+    4. Run RAG pipeline with transcription
+    5. Generate TTS response
+    6. Store audio files and messages in the database
+    7. Return transcription, text response, and base64 audio
+    """
     audio_bytes = await audio.read()
     if not audio_bytes:
         raise HTTPException(status_code=400, detail="El archivo de audio está vacío")
@@ -127,16 +161,16 @@ async def transcribe_and_answer(
 
     transcription = result.text.strip()
 
-    # ── Detección de audio silencioso / alucinaciones de Whisper ────────────────
-    # Cuando el audio es silencio o ruido muy bajo, Whisper NO devuelve cadena
-    # vacía: alucina textos conocidos (artefactos de su conjunto de entrenamiento).
-    # El caso más frecuente en español es "Subtítulos realizados por la comunidad
-    # de Amara.org", pero también frases típicas de YouTube ("Gracias por ver el
-    # video", "Suscríbete al canal", etc.). Hay tres capas de detección:
-    #   1) Igualdad exacta normalizada contra frases conocidas (frases cortas).
-    #   2) Contención (substring) SOLO para frases largas y específicas, para no
-    #      filtrar consultas reales que contengan una palabra suelta.
-    #   3) Señales de confianza por segmento (no_speech_prob / avg_logprob).
+    # ── Silent audio / Whisper hallucination detection ────────────────
+    # When audio is silent or very low noise, Whisper does NOT return an
+    # empty string: it hallucinates known texts (training set artifacts).
+    # Most common in Spanish: "Subtítulos realizados por la comunidad de Amara.org",
+    # but also typical YouTube phrases ("Gracias por ver el video", etc.).
+    # Three detection layers:
+    #   1) Normalized exact match against known phrases (short phrases).
+    #   2) Substring match ONLY for long/specific phrases to avoid
+    #      filtering real queries containing a single word.
+    #   3) Per-segment confidence signals (no_speech_prob / avg_logprob).
     WHISPER_HALLUCINATIONS = {
         "",
         "subtítulos realizados por la comunidad de amara.org",
@@ -150,8 +184,8 @@ async def transcribe_and_answer(
         "[music]",
         "[ silence ]",
         "[silence]",
-        # Alucinaciones típicas de YouTube en español (forma normalizada:
-        # minúsculas, sin signos ¡! ¿? ni puntuación de borde).
+        # Typical Spanish YouTube hallucinations (normalized form:
+        # lowercase, no ¡! ¿? or edge punctuation)
         "gracias por ver el video",
         "gracias por ver el vídeo",
         "gracias por ver este video",
@@ -168,9 +202,9 @@ async def transcribe_and_answer(
         "SUSCRIBETE Y DALE LIKE",
         "SUSCRIBETE",
     }
-    # Frases largas/específicas que también atrapamos por contención (aunque
-    # vengan rodeadas de otras alucinaciones). NO incluir palabras sueltas como
-    # "suscríbete" o "hasta la próxima" que podrían aparecer en una pregunta real.
+    # Long/specific phrases caught by substring matching (even when surrounded
+    # by other hallucinations). Do NOT include single words like "suscríbete"
+    # or "hasta la próxima" that could appear in a real question.
     HALLUCINATION_SUBSTRINGS = (
         "gracias por ver el video",
         "gracias por ver el vídeo",
@@ -181,9 +215,9 @@ async def transcribe_and_answer(
         "nos vemos en el próximo video",
         "suscríbete y activa",
         "activa las notificaciones",
-        # Regurgitaciones del prompt narrativo viejo de Whisper (audios en caché
-        # o variantes). Frases largas y específicas: NUNCA "tvs"/"apache"/"raider"
-        # sueltos, que son consultas legítimas.
+        # Whisper narrative prompt regurgitations (cached audio or variants).
+        # Long and specific phrases: NEVER "tvs"/"apache"/"raider" alone,
+        # which are legitimate queries.
         "fabrica modelos como",
         "tvs apache, tvs raider",
     )
@@ -205,7 +239,7 @@ async def transcribe_and_answer(
         transcription = SILENCIO_QUERY
 
 
-    # Validar que la conversación pertenece al usuario si se proporcionó
+    # Validate conversation ownership if provided
     history = []
     user_audio_id = None
     if conversation_id:
@@ -213,7 +247,7 @@ async def transcribe_and_answer(
         if not conv:
             raise HTTPException(status_code=404, detail="Conversación no encontrada")
 
-        # Guardar audio/mensaje del usuario siempre para que aparezca en el chat
+        # Save audio/user message for chat display
         user_audio_id = await audio_service.save_audio(
             session=session,
             conversation_id=conversation_id,
@@ -235,38 +269,38 @@ async def transcribe_and_answer(
         }
         await log_service.append_message(user_id, conversation_id, user_msg)
 
-        # Obtener historial reciente (sin el mensaje que acaba de guardarse)
+        # Get recent history (excluding the message just saved)
         history = await log_service.get_context(
             user_id, conversation_id, limit=HISTORY_LIMIT + 1
         )
         history = history[:-1]
 
-    # RAG: recuperar chunks relevantes
+    # RAG: retrieve relevant chunks
     try:
         context_chunks = retrieve_context(transcription)
     except Exception as e:
         context_chunks = []
-        print(f"⚠️ Error en retrieval (voice): {e}")
+        print(f"Error in retrieval (voice): {e}")
 
-    # Generar respuesta con LLM + historial + contexto RAG
+    # Generate response with LLM + history + RAG context
     try:
         answer = generate_answer(transcription, context_chunks, history=history, voice_mode=True)
     except Exception as e:
         answer = f"Lo siento, ocurrió un error al generar la respuesta: {str(e)}"
-        print(f"⚠️ Error en generación (voice): {e}")
+        print(f"Error in generation (voice): {e}")
 
-    # TTS: sintetizar la respuesta
+    # TTS: synthesize the response
     tts_bytes = None
     audio_b64 = None
     try:
         tts_bytes = await synthesize_speech(answer)
         audio_b64 = base64.b64encode(tts_bytes).decode("utf-8")
     except Exception as e:
-        print(f"⚠️ Error en TTS (voice): {e}")
+        print(f"Error in TTS (voice): {e}")
 
-    # Guardar respuesta del asistente si hay conversación activa.
-    # En caso de silencio NO guardamos el mensaje del usuario (ya filtrado arriba),
-    # pero SÍ guardamos la respuesta del asistente para que aparezca en el chat.
+    # Save assistant response if active conversation.
+    # For silence, the user message is not saved (filtered above),
+    # but the assistant response IS saved for chat display.
     if conversation_id:
         assistant_audio_id = None
         if tts_bytes:
@@ -290,7 +324,7 @@ async def transcribe_and_answer(
         }
         await log_service.append_message(user_id, conversation_id, assistant_msg)
 
-        # Solo actualizar título si hubo mensaje real del usuario
+        # Auto-title: only if there was a real user message
         if not is_silent:
             all_msgs = await log_service.get_context(user_id, conversation_id, limit=200)
             if len(all_msgs) == 2:
@@ -309,6 +343,11 @@ async def get_audio_file(
     audio_id: str,
     session: AsyncSession = Depends(get_session),
 ):
+    """
+    Retrieves a stored audio file by its ID.
+
+    Returns the raw audio bytes with appropriate content-type and caching headers.
+    """
     record = await audio_service.get_audio(session, audio_id)
     if not record:
         raise HTTPException(status_code=404, detail="Audio no encontrado")
