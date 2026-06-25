@@ -1,3 +1,9 @@
+/**
+ * Service invoice modal for completed repairs.
+ *
+ * Generates a formatted invoice with labor costs, parts, IVA (19%),
+ * and total. Includes print button (placeholder) and close action.
+ */
 import { FileText, X, Printer, CheckCircle } from 'lucide-react';
 
 export default function InvoiceModal({ entry, onClose }) {

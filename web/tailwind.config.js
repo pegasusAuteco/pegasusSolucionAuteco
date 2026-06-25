@@ -1,3 +1,9 @@
+/**
+ * Tailwind CSS configuration for the MotorConnect web application.
+ *
+ * Extends the default theme with custom Auteco/Pegasus brand colors,
+ * custom fonts, safe-area spacing for mobile devices, and a fade-in-up animation.
+ */
 /** @type {import('tailwindcss').Config} */
 export default {
   content: [

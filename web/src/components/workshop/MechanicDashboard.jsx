@@ -1,3 +1,11 @@
+/**
+ * Mechanic dashboard component with dual-view tabs.
+ *
+ * Switches between:
+ * - "Motos Ingresadas": View of Supabase intake records (read-only)
+ * - "Cola de Trabajo": Local repair queue with MotorcycleCard management
+ * Includes refresh, loading, and error states for the Supabase view.
+ */
 import { useState, useEffect, useCallback } from 'react';
 import { useWorkshop } from '@hooks/useWorkshop';
 import MotorcycleCard from './MotorcycleCard';

@@ -1,3 +1,10 @@
+/**
+ * Chat message bubble component.
+ *
+ * Renders user and assistant messages with distinct styling.
+ * Supports basic markdown bold formatting and voice message playback.
+ * Auto-plays recent voice messages from the assistant.
+ */
 import VoiceMessagePlayer from './VoiceMessagePlayer';
 
 function isVeryRecent(createdAt) {

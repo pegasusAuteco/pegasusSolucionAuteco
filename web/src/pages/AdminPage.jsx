@@ -1,3 +1,12 @@
+/**
+ * Admin dashboard page with metrics and manual management.
+ *
+ * Features:
+ * - Real-time usage metrics (users, conversations, messages)
+ * - Motorcycle manual upload with PDF processing and image attachment
+ * - User role management
+ * - Manual catalog with delete capability
+ */
 import { useState } from 'react'
 import { Users, MessageSquare, Activity, FilePlus2, Upload, X, Construction, Zap, Shield, Trash2 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'

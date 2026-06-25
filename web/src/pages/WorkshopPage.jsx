@@ -1,3 +1,9 @@
+/**
+ * Workshop management page with Reception and Technical Team tabs.
+ *
+ * Provides the full workshop interface with motorcycle intake registration
+ * and mechanic dashboard views. Accessible to secretario and admin roles.
+ */
 import { useState } from 'react';
 import { PenTool, ClipboardEdit, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';

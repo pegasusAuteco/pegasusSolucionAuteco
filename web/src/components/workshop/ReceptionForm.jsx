@@ -1,3 +1,10 @@
+/**
+ * Motorcycle intake registration form for the workshop.
+ *
+ * Validates input with Zod schemas, checks for duplicate plates,
+ * and saves to Supabase via the BFF. Supports both create and edit modes.
+ * Merges hardcoded models with database manuals for the model dropdown.
+ */
 import { useState } from 'react';
 import { z } from 'zod';
 import { useWorkshop } from '@hooks/useWorkshop';

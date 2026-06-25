@@ -1,3 +1,9 @@
+/*
+ * Global styles for MotorConnect web application.
+ *
+ * Imports Tailwind CSS layers and defines custom scrollbar styles
+ * for WebKit (Chrome/Safari) and Firefox with dark mode support.
+ */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

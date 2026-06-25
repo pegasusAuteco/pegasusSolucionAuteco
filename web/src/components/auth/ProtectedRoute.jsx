@@ -1,3 +1,9 @@
+/**
+ * Route guard component for role-based access control.
+ *
+ * Redirects unauthenticated users to /login and users without the required
+ * role to their default home page. Uses Outlet for nested route rendering.
+ */
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAuthStore } from '@store/authStore'
 

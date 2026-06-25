@@ -1,3 +1,9 @@
+/**
+ * API service layer for all backend communication.
+ *
+ * Provides typed service objects for auth, chat, history, analytics,
+ * and admin operations. All requests go through the BFF proxy at /api.
+ */
 import { apiFetch } from '../lib/fetch'
 
 const baseURL = import.meta.env.VITE_API_URL || '/api'

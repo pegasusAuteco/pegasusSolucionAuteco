@@ -1,3 +1,9 @@
+/**
+ * Chat context provider for managing conversation UI state.
+ *
+ * Maintains the active conversation ID, pending chat input from external
+ * sources (e.g. inventory clicks), and initialization error state.
+ */
 import { createContext, useState } from 'react';
 
 export const ChatContext = createContext(undefined);

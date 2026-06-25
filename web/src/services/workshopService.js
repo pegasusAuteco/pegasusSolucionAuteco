@@ -1,3 +1,8 @@
+/**
+ * Workshop service for managing motorcycle intake records via the BFF.
+ *
+ * Provides CRUD operations for workshop entries and WhatsApp notifications.
+ */
 import { apiFetch } from '../lib/fetch'
 
 export const workshopService = {

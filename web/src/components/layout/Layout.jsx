@@ -1,3 +1,12 @@
+/**
+ * Main application layout component.
+ *
+ * Provides the responsive split-panel layout with:
+ * - Left: Chat history drawer + ChatContainer
+ * - Right: Tabbed panel (Inventory, Repair Queue, Admin Metrics)
+ * - Mobile: Bottom tab navigation
+ * Includes conversation management (create, rename, delete) and role-based UI.
+ */
 import { useState, useRef, useEffect, lazy, Suspense } from 'react';
 import ChatContainer from '../chat/ChatContainer';
 import MotorcycleList from '../inventory/MotorcycleList';

@@ -1,3 +1,10 @@
+/**
+ * Mechanic-only page showing the repair queue from Supabase.
+ *
+ * Displays motorcycles assigned to the mechanic with model, plate,
+ * date, and observations. Includes auto-refresh and manual refresh.
+ * Redirects secretarios to /workshop.
+ */
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {

@@ -1,3 +1,10 @@
+/**
+ * WebSocket hook for real-time chat streaming.
+ *
+ * Manages connection lifecycle, automatic reconnection (up to 3 attempts),
+ * streaming token display, and message sending via WebSocket.
+ * Falls back to POST requests if WebSocket connection fails after 3 seconds.
+ */
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 

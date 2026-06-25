@@ -1,3 +1,9 @@
+/**
+ * Zustand store for authentication state management.
+ *
+ * Persists user data in localStorage and provides actions for
+ * login (setAuth), logout, and user updates.
+ */
 import { create } from 'zustand'
 
 const storedUser = localStorage.getItem('auth_user')

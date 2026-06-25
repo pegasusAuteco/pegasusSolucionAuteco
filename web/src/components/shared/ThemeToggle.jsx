@@ -1,3 +1,9 @@
+/**
+ * Dark/light theme toggle button.
+ *
+ * Uses the themeStore to toggle between light and dark modes,
+ * displaying a Moon icon in light mode and Sun icon in dark mode.
+ */
 import { Moon, Sun } from 'lucide-react';
 import { useThemeStore } from '@store/themeStore';
 

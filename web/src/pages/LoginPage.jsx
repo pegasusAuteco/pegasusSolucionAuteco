@@ -1,3 +1,12 @@
+/**
+ * Login page with email/password form and Zod validation.
+ *
+ * Features:
+ * - Form validation with Zod schemas
+ * - Offline detection with retry capability
+ * - Role-based redirect after login
+ * - Animated loading states
+ */
 import { useState } from 'react'
 import { z } from 'zod'
 import { Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react'

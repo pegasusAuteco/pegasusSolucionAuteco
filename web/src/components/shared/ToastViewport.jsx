@@ -1,3 +1,9 @@
+/**
+ * Toast notification viewport component.
+ *
+ * Renders a stack of toast notifications in the top-right corner.
+ * Supports success, error, and info types with appropriate icons and colors.
+ */
 import { CheckCircle2, AlertTriangle, Info, X } from 'lucide-react'
 import { useToastStore } from '@store/toastStore'
 

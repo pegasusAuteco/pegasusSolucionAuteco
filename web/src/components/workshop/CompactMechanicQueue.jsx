@@ -1,3 +1,10 @@
+/**
+ * Compact mechanic queue component for the main layout's right panel.
+ *
+ * Shows pending repairs in a grid or list layout. When a repair is selected,
+ * displays a detailed repair panel with notes, parts management, and
+ * a "Finish Repair" action button.
+ */
 import { useState } from 'react';
 import { useWorkshop } from '@hooks/useWorkshop';
 import { Package, Plus, ArrowLeft, Wrench, CheckCircle, FileText, Trash2 } from 'lucide-react';

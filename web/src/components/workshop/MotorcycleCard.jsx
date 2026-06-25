@@ -1,3 +1,10 @@
+/**
+ * Workshop motorcycle card component with full repair management.
+ *
+ * Displays client info, observations, mechanic notes, parts table,
+ * and action buttons (Edit, Complete, WhatsApp notification, Close order).
+ * Used in the MechanicDashboard's local queue view.
+ */
 import React, { useState, useEffect } from 'react';
 import { useWorkshop } from '@hooks/useWorkshop';
 import { useToastStore } from '../../store/toastStore';

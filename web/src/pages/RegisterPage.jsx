@@ -1,3 +1,12 @@
+/**
+ * User registration page with role selection.
+ *
+ * Features:
+ * - Role-based registration (mecanico/secretario)
+ * - Password confirmation and strength validation
+ * - Optional workshop/company field
+ * - Zod schema validation
+ */
 import { useState } from 'react'
 import { z } from 'zod'
 import { User, Mail, Lock, Building2, AlertCircle, Wrench, ClipboardList, ShieldCheck } from 'lucide-react'

@@ -1,3 +1,9 @@
+/**
+ * Audio player component for voice messages.
+ *
+ * Features play/pause toggle, progress bar with seek, and auto-play support.
+ * Pauses other audio elements when playing to prevent overlap.
+ */
 import { useRef, useState, useEffect, useCallback } from 'react'
 import { Play, Pause } from 'lucide-react'
 

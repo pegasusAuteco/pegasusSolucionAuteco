@@ -1,3 +1,14 @@
+/**
+ * Main chat container component with message display and input.
+ *
+ * Features:
+ * - WebSocket streaming with POST fallback
+ * - Voice recording with touch gestures (hold-to-record, swipe-to-cancel, lock-to-handsfree)
+ * - Image attachment support
+ * - Optimistic message updates
+ * - Auto-scroll to latest messages
+ * - Welcome screen when no messages exist
+ */
 import { useState, useRef, useEffect, useCallback } from 'react';
 import ChatBubble from './ChatBubble';
 import { Send, Loader2, Mic, MicOff, ImagePlus, X, Lock, Unlock, ChevronUp, Trash2 } from 'lucide-react';

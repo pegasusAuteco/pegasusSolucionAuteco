@@ -1,3 +1,10 @@
+/**
+ * Workshop context provider for managing local repair queue state.
+ *
+ * Persists the queue and active repair ID to localStorage.
+ * Provides operations for adding, updating, and completing workshop entries,
+ * as well as managing parts lists for each entry.
+ */
 import { createContext, useState, useEffect, useCallback } from 'react';
 
 export const WorkshopContext = createContext(undefined);

@@ -1,3 +1,9 @@
+/**
+ * Chat hooks for conversation and message management.
+ *
+ * Provides React Query hooks for CRUD operations on conversations,
+ * message fetching, and optimistic message sending.
+ */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { chatService } from '@services/api';
 import { useChatUI } from './useChatUI';
