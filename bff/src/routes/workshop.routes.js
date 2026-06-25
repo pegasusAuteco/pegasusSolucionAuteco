@@ -1,3 +1,9 @@
+/**
+ * Workshop management routes for motorcycle intake tracking.
+ *
+ * Provides CRUD operations for workshop entries (ingresos_taller)
+ * and motorcycle status updates. All routes require authentication.
+ */
 import { Router } from 'express'
 import { requireAuth } from '../middleware/requireAuth.js'
 import * as workshopService from '../services/workshopService.js'

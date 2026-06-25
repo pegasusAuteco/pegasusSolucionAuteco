@@ -1,3 +1,9 @@
+/**
+ * Authentication routes for login, registration, logout, and profile.
+ *
+ * Proxies auth requests to FastAPI and manages session state in Redis.
+ * Rate limiters are applied to login and register endpoints.
+ */
 import { Router } from 'express'
 import { requireAuth } from '../middleware/requireAuth.js'
 import { loginLimiter, registerLimiter } from '../middleware/rateLimiter.js'
@@ -51,7 +57,7 @@ router.post('/logout', (req, res) => {
 })
 
 // GET /auth/profile
-// FastAPI no tiene /auth/profile aún: se sirve desde la sesión almacenada en login.
+// FastAPI does not expose /auth/profile yet: served from session data stored at login.
 router.get('/profile', requireAuth, (req, res) => {
   const user = req.session.user
   if (!user) {
