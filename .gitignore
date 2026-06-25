@@ -46,6 +46,7 @@ activities.txt
 cookies.txt
 test_*.py
 .claude
+.mimocode
 documents/
 
 docs/CLAUDE.md
