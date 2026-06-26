@@ -97,7 +97,8 @@ def search_similar_fallas(query_embedding: list[float], motocicleta: str = "", t
             mot_norm = motocicleta.lower().replace("-", " ")
             if motocicleta and motocicleta.lower() != "general":
                 palabras = mot_norm.split()
-                if palabras and palabras[0] not in modelo:
+                # Accept if it's explicitly "general" OR if the motorcycle brand matches
+                if modelo != "general" and palabras and palabras[0] not in modelo:
                     continue
                     
             resultados_filtrados.append(r)
