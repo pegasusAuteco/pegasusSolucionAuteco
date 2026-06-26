@@ -184,7 +184,7 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }) {
           observations: data.observations,
         });
 
-        addToast('success', ' Moto registrada y guardada en Supabase');
+        addToast('success', ' Moto registrada y guardada correctamente');
         setFormData({
           clientName: '', clientId: '', phone: '', email: '',
           entryDate: getLocalISODate(), model: '', plate: '', mileage: '', observations: '',
@@ -192,7 +192,7 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }) {
         setErrors({});
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Error desconocido';
-        addToast('error', ` Error al guardar en Supabase: ${msg}`);
+        addToast('error', ` Error al guardar correctamente: ${msg}`);
       } finally {
         setIsSubmitting(false);
       }
