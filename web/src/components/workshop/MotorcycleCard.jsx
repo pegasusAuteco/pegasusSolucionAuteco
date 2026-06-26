@@ -33,6 +33,12 @@ export default function MotorcycleCard({ entry }) {
     return () => clearInterval(interval);
   }, [entry.timestamp]);
 
+  /**
+   * Adds a spare part to the current workshop entry.
+   * Validates that the name is not empty and quantity is greater than 0,
+   * then resets the part form fields.
+   * @param {React.FormEvent<HTMLFormElement>} e - Form submit event.
+   */
   const handleAddPart = (e) => {
     e.preventDefault();
     if (partName.trim() && partQty > 0) {

@@ -15,7 +15,11 @@ import {
 } from 'lucide-react';
 import { workshopService } from '../../services/workshopService';
 
-/** Local repair queue view with pending/finished tabs and MotorcycleCard management. */
+/**
+ * Local repair queue view with pending/finished tabs.
+ * Filters and sorts the queue by status and timestamp, rendering
+ * a MotorcycleCard for each entry.
+ */
 function LocalQueueView() {
   const { queue } = useWorkshop();
   const [tab, setTab] = useState('pending');
@@ -134,6 +138,13 @@ function SupabaseIngresosList() {
   const [error, setError] = useState(null);
   const [lastRefresh, setLastRefresh] = useState(new Date());
 
+  /**
+   * Fetches intake records from Supabase via the BFF.
+   * Updates local state with the received data and records the
+   * last refresh timestamp. Handles network errors and updates
+   * loading/error states accordingly.
+   * @returns {Promise<void>}
+   */
   const fetchMotos = useCallback(async () => {
     setLoading(true);
     setError(null);

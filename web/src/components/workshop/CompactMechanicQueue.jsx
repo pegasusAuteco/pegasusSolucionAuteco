@@ -103,6 +103,12 @@ function CompactMotorcycleCard({ entry, onAddPart, onSelect, onUpdateNotes, onRe
   const [partQty, setPartQty] = useState(1);
   const [notes, setNotes] = useState(entry.mechanicNotes || '');
 
+  /**
+   * Adds a spare part to the active workshop entry.
+   * Validates that the name is not empty and quantity is greater than 0,
+   * then resets the part form fields.
+   * @param {React.FormEvent<HTMLFormElement>} e - Form submit event.
+   */
   const handleAddPart = (e) => {
     e.preventDefault();
     if (partName.trim() && partQty > 0) {
