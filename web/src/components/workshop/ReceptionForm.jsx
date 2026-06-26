@@ -44,13 +44,13 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }) {
     if (n.toLowerCase().endsWith('.pdf')) {
       n = n.slice(0, -4);
     }
-    // Elimina (catálogo), etc.
+    // Strip (catalog) etc.
     n = n.replace(/[-_]?\s*\(?cat[áa]logo\)?\s*/gi, '');
-    // Reemplaza guiones y guiones bajos por espacios
+    // Replace hyphens and underscores with spaces
     n = n.replace(/[-_]/g, ' ');
-    // Elimina fechas tipo 7 11 25 o 07 11 2025 al final (común en archivos subidos)
+    // Remove trailing dates like 7 11 25 or 07 11 2025 (common in uploaded files)
     n = n.replace(/\s+\d{1,2}\s+\d{1,2}\s+\d{2,4}$/, '');
-    // Elimina espacios múltiples y recorta
+    // Collapse multiple spaces and trim
     return n.replace(/\s+/g, ' ').trim().toUpperCase();
   };
 
@@ -109,7 +109,7 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }) {
 
     const data = result.data;
 
-    // Validación de placa duplicada en el taller (ignorando guiones)
+    // Duplicate plate validation in the workshop (ignoring hyphens)
     const normalizedNewPlate = data.plate.replace(/-/g, '').toUpperCase();
     const isDuplicate = queue.some(
       (q) => q.plate.replace(/-/g, '').toUpperCase() === normalizedNewPlate && (!initialData || q.id !== initialData.id)
@@ -153,7 +153,7 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }) {
         if (onSuccess) onSuccess();
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Error desconocido';
-        addToast('error', `❌ Error al actualizar: ${msg}`);
+        addToast('error', ` Error al actualizar: ${msg}`);
       } finally {
         setIsSubmitting(false);
       }
@@ -184,7 +184,7 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }) {
           observations: data.observations,
         });
 
-        addToast('success', '✅ Moto registrada y guardada en Supabase');
+        addToast('success', ' Moto registrada y guardada en Supabase');
         setFormData({
           clientName: '', clientId: '', phone: '', email: '',
           entryDate: getLocalISODate(), model: '', plate: '', mileage: '', observations: '',
@@ -192,7 +192,7 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }) {
         setErrors({});
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Error desconocido';
-        addToast('error', `❌ Error al guardar en Supabase: ${msg}`);
+        addToast('error', ` Error al guardar en Supabase: ${msg}`);
       } finally {
         setIsSubmitting(false);
       }

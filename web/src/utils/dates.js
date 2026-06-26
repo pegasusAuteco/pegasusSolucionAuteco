@@ -15,7 +15,7 @@ export function getLocalISODate(date = new Date()) {
 }
 
 /**
- * Formats a date as a relative time string (e.g. "hace 3 minutos").
+ * Formats a date as a relative time string (e.g. "3 minutes ago").
  * @param {string|Date} date - The date to format
  * @returns {string} Localized relative time string in Spanish
  */

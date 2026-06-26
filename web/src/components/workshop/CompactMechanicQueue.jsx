@@ -97,6 +97,7 @@ export default function CompactMechanicQueue({ isGrid = false }) {
   );
 }
 
+/** Individual motorcycle card with notes, parts management, and repair actions. */
 function CompactMotorcycleCard({ entry, onAddPart, onSelect, onUpdateNotes, onRemovePart, isActiveView }) {
   const [partName, setPartName] = useState('');
   const [partQty, setPartQty] = useState(1);

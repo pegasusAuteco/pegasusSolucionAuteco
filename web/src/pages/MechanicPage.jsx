@@ -15,6 +15,7 @@ import { useAuthStore } from '@store/authStore';
 import { useLogout } from '@hooks/useAuth';
 import { workshopService } from '../services/workshopService';
 
+/** Card displaying a single motorcycle's model, plate, date, and observations. */
 function MotoCard({ moto }) {
   const fecha = moto.fecha_ingreso
     ? new Date(moto.fecha_ingreso).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -64,12 +65,14 @@ function MotoCard({ moto }) {
   );
 }
 
+/** Fetches and displays the mechanic's assigned motorcycle queue with loading/error states. */
 function MechanicMotoList() {
   const [motos, setMotos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastRefresh, setLastRefresh] = useState(new Date());
 
+  /** Fetch motorcycle queue from the workshop service API. */
   const fetchMotos = useCallback(async () => {
     setLoading(true);
     setError(null);

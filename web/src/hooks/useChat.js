@@ -8,6 +8,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { chatService } from '@services/api';
 import { useChatUI } from './useChatUI';
 
+/**
+ * Fetches the list of all conversations for the current user.
+ *
+ * Caches results for 30 seconds (staleTime) to avoid redundant fetches.
+ *
+ * @returns {UseQueryReturn} Query object with `data` as an array of conversation objects
+ *   ({ id, title, created_at, ... }) and standard loading/error states.
+ */
 export function useConversations() {
   return useQuery({
     queryKey: ['conversations'],
@@ -16,6 +24,16 @@ export function useConversations() {
   });
 }
 
+/**
+ * Fetches messages for a specific conversation.
+ *
+ * The query is disabled until a valid conversationId is provided.
+ *
+ * @param {string|null} conversationId - The conversation to fetch messages for.
+ *   Pass null or undefined to disable the query.
+ * @returns {UseQueryReturn} Query object with `data` as an array of message objects
+ *   ({ id, role, content, created_at, ... }) and standard loading/error states.
+ */
 export function useMessages(conversationId) {
   return useQuery({
     queryKey: ['messages', conversationId],
@@ -24,6 +42,15 @@ export function useMessages(conversationId) {
   });
 }
 
+/**
+ * Hook for creating a new conversation.
+ *
+ * Invalidates the conversations query on success so the sidebar updates.
+ * Does not retry on failure.
+ *
+ * @returns {UseMutationReturn} React Query mutation object.
+ *   Call .mutate(title) where title is the conversation name (e.g. 'Nuevo chat').
+ */
 export function useCreateConversation() {
   const queryClient = useQueryClient();
 
@@ -39,6 +66,14 @@ export function useCreateConversation() {
   });
 }
 
+/**
+ * Hook for renaming an existing conversation.
+ *
+ * Invalidates the conversations query on success so the sidebar updates.
+ *
+ * @returns {UseMutationReturn} React Query mutation object.
+ *   Call .mutate({ conversationId, title }) to rename.
+ */
 export function useRenameConversation() {
   const queryClient = useQueryClient();
 
@@ -51,6 +86,15 @@ export function useRenameConversation() {
   });
 }
 
+/**
+ * Hook for deleting a single conversation.
+ *
+ * If the deleted conversation was the active one, clears the active selection.
+ * Invalidates the conversations query on success.
+ *
+ * @returns {UseMutationReturn} React Query mutation object.
+ *   Call .mutate(conversationId) to delete.
+ */
 export function useDeleteConversation() {
   const queryClient = useQueryClient();
   const { activeConversationId, setActiveConversation } = useChatUI();
@@ -66,6 +110,14 @@ export function useDeleteConversation() {
   });
 }
 
+/**
+ * Hook for deleting all conversations at once.
+ *
+ * Clears the active conversation selection and invalidates the cache.
+ *
+ * @returns {UseMutationReturn} React Query mutation object.
+ *   Call .mutate() with no arguments to delete all.
+ */
 export function useDeleteAllConversations() {
   const queryClient = useQueryClient();
   const { setActiveConversation } = useChatUI();
@@ -79,6 +131,16 @@ export function useDeleteAllConversations() {
   });
 }
 
+/**
+ * Hook for sending a message with optimistic UI updates.
+ *
+ * Immediately appends the user message to the local cache before the server
+ * responds. On error, rolls back to the previous messages. On success,
+ * invalidates the messages query to sync with the server response.
+ *
+ * @returns {UseMutationReturn} React Query mutation object.
+ *   Call .mutate({ conversationId, content }) to send.
+ */
 export function useSendMessage() {
   const queryClient = useQueryClient();
 

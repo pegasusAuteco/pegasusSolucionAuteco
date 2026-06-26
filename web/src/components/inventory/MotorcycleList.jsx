@@ -42,7 +42,7 @@ const MotorcycleList = () => {
     );
   };
 
-  // Solo mostramos en el inventario aquellos manuales de BD que tengan una imagen asignada
+  // Only show database manuals with an assigned image in the inventory
   const validDbManuals = (dbManuals || []).filter(manual => manual.image);
   const allMotos = [...MOCK_MOTOS, ...validDbManuals];
 

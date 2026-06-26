@@ -8,6 +8,7 @@ import { apiFetch } from '../lib/fetch'
 
 const baseURL = import.meta.env.VITE_API_URL || '/api'
 
+/** Authentication API operations: login, register, and profile. */
 export const authService = {
   login: (credentials) =>
     apiFetch(`${baseURL}/auth/login`, {
@@ -22,6 +23,7 @@ export const authService = {
   profile: () => apiFetch(`${baseURL}/auth/profile`).then((r) => r.user),
 }
 
+/** Chat API operations: conversations, messages, and voice transcription. */
 export const chatService = {
   list: () => apiFetch(`${baseURL}/chat/conversations`),
   create: (title) =>
@@ -59,17 +61,20 @@ export const chatService = {
   },
 }
 
+/** Conversation history API operations: list, get, and delete. */
 export const historyService = {
   list: () => apiFetch(`${baseURL}/history`),
   get: (id) => apiFetch(`${baseURL}/history/${id}`),
   delete: (id) => apiFetch(`${baseURL}/history/${id}`, { method: 'DELETE' }),
 }
 
+/** User analytics API operations: personal stats and admin stats. */
 export const analyticsService = {
   myStats: () => apiFetch(`${baseURL}/analytics/me`),
   adminStats: () => apiFetch(`${baseURL}/analytics/admin`),
 }
 
+/** Admin API operations: user management, role updates, and manual catalog. */
 export const adminService = {
   getUsers: () => apiFetch(`${baseURL}/admin/users`),
   updateRole: (userId, role) =>
@@ -93,7 +98,7 @@ export const adminService = {
     return response.json()
   },
   uploadManual: async (formData) => {
-    // Para FormData NO enviamos el header Content-Type en apiFetch
+    // FormData handles Content-Type automatically; do not set it via apiFetch
     const token = localStorage.getItem('jwt')
     const headers = {}
     if (token) headers['Authorization'] = `Bearer ${token}`

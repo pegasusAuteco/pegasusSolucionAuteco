@@ -7,6 +7,7 @@
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAuthStore } from '@store/authStore'
 
+/** Maps a user role to its default home route. */
 function defaultHomeForRole(role) {
   switch (role) {
     case 'mecanico':   return '/mechanic'

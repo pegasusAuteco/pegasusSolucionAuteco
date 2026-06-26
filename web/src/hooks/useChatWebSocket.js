@@ -8,6 +8,12 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 
+/**
+ * Parse WebSocket message data (Blob, ArrayBuffer, or string) into a JSON object.
+ *
+ * @param {Blob|ArrayBuffer|string} data - The raw WebSocket message data
+ * @returns {Promise<Object|null>} Parsed JSON object, or null on parse failure
+ */
 async function parseWsMessage(data) {
   try {
     const text = data instanceof Blob ? await data.text() :
@@ -23,6 +29,24 @@ const WS_BASE = import.meta.env.VITE_WS_URL || 'ws://localhost:3000'
 const MAX_RECONNECT = 3
 const RECONNECT_DELAY = 2000
 
+/**
+ * Hook for managing a WebSocket connection to a chat conversation.
+ *
+ * Handles connection, reconnection (up to 3 attempts), streaming token display,
+ * and message sending. Automatically reconnects on transient failures (code 1006)
+ * but not on application-level rejections (codes 4000-4999) or normal closes (1000).
+ *
+ * @param {string|null} conversationId - The conversation to connect to. Pass null to disconnect.
+ * @param {Object} [callbacks] - Optional callback functions.
+ * @param {Function} [callbacks.onError] - Called with an error message when a non-recoverable error occurs.
+ * @param {Function} [callbacks.onConversationNotFound] - Called when the server rejects with code 4004.
+ * @returns {{ streamingText: string, isStreaming: boolean, isConnected: boolean,
+ *   sendMessage: (content: string) => boolean }}
+ *   - streamingText: The accumulated text tokens from the current assistant response.
+ *   - isStreaming: Whether the assistant is currently streaming a response.
+ *   - isConnected: Whether the WebSocket is open and connected.
+ *   - sendMessage: Sends a text message via WebSocket. Returns false if not connected.
+ */
 export function useChatWebSocket(conversationId, { onError, onConversationNotFound } = {}) {
   const queryClient = useQueryClient()
   const wsRef = useRef(null)
@@ -36,6 +60,13 @@ export function useChatWebSocket(conversationId, { onError, onConversationNotFou
   const [isStreaming, setIsStreaming] = useState(false)
   const [isConnected, setIsConnected] = useState(false)
 
+  /**
+   * Establish a WebSocket connection to the conversation.
+   *
+   * Sets up onopen, onmessage, onclose, and onerror handlers.
+   * On close, retries with exponential logic up to MAX_RECONNECT attempts
+   * for transient failures, or calls onError for permanent rejections.
+   */
   const connect = useCallback(() => {
     if (!conversationId) return
     if (wsRef.current?.readyState === WebSocket.OPEN) return
@@ -64,22 +95,22 @@ export function useChatWebSocket(conversationId, { onError, onConversationNotFou
       } else if (msg.type === 'done') {
         setIsStreaming(false)
         queryClient.invalidateQueries({ queryKey: ['messages', conversationId] })
-      } else if (msg.type === 'error') {
+      } else       if (msg.type === 'error') {
         setIsStreaming(false)
-        const errorMsg = msg.message ?? 'Error en el chat'
-        console.error('[ws] Error del servidor:', errorMsg)
+        const errorMsg = msg.message ?? 'Chat error'
+        console.error('[ws] Server error:', errorMsg)
         onError?.(errorMsg)
       }
     }
 
     ws.onclose = (event) => {
-      console.log('[ws] cerrado — code:', event.code, 'reason:', event.reason)
+      console.log('[ws] closed — code:', event.code, 'reason:', event.reason)
       clearTimeout(stabilityTimerRef.current)
       if (!mountedRef.current) return
       setIsConnected(false)
       setIsStreaming(false)
 
-      // Rechazos de aplicación (4000-4999) y cierre normal (1000): permanentes, nunca reintentar
+      // Application-level rejections (4000-4999) and normal close (1000): permanent, never retry
       if (event.code === 1000 || (event.code >= 4000 && event.code <= 4999)) {
         if (event.code === 4001) {
           window.location.href = '/login'
@@ -92,14 +123,14 @@ export function useChatWebSocket(conversationId, { onError, onConversationNotFou
         return
       }
 
-      // Cierres anormales transitorios (1006, etc.): reintentar hasta MAX_RECONNECT
+      // Transient abnormal closures (1006, etc.): retry up to MAX_RECONNECT
       if (reconnectCountRef.current < MAX_RECONNECT) {
         reconnectCountRef.current++
-        console.log(`[ws] Reconectando intento ${reconnectCountRef.current}/${MAX_RECONNECT}...`)
+        console.log(`[ws] Reconnecting attempt ${reconnectCountRef.current}/${MAX_RECONNECT}...`)
         reconnectTimerRef.current = setTimeout(connect, RECONNECT_DELAY)
       } else {
-        console.log('[ws] máximo de reintentos alcanzado, deteniendo')
-        onError?.('No se pudo conectar con el servidor de chat')
+        console.log('[ws] Max retries reached, stopping')
+        onError?.('Could not connect to chat server')
       }
     }
 
@@ -110,7 +141,7 @@ export function useChatWebSocket(conversationId, { onError, onConversationNotFou
 
   useEffect(() => {
     mountedRef.current = true
-    // Resetear el contador solo cuando cambia la conversación, no en cada reconexión
+    // Reset counter only when conversation changes, not on every reconnection
     if (lastConnectedIdRef.current !== conversationId) {
       reconnectCountRef.current = 0
       lastConnectedIdRef.current = conversationId
@@ -128,15 +159,24 @@ export function useChatWebSocket(conversationId, { onError, onConversationNotFou
     }
   }, [connect])
 
+  /**
+   * Send a text message through the WebSocket connection.
+   *
+   * Performs an optimistic update of the messages cache to show the user's
+   * message immediately, then sends the raw JSON payload over the socket.
+   *
+   * @param {string} content - The message text to send
+   * @returns {boolean} True if the message was sent, false if the socket is not open
+   */
   const sendMessage = useCallback((content) => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-      console.warn('[ws] WebSocket no está conectado')
+      console.warn('[ws] WebSocket is not connected')
       return false
     }
     setStreamingText('')
     setIsStreaming(true)
     
-    // Actualización optimista del mensaje del usuario para evitar el lag visual
+    // Optimistic user message update to avoid visual lag
     const optimisticMessage = {
       id: Date.now().toString(),
       conversation_id: conversationId,

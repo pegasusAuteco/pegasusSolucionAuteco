@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { workshopService } from '../../services/workshopService';
 
+/** Local repair queue view with pending/finished tabs and MotorcycleCard management. */
 function LocalQueueView() {
   const { queue } = useWorkshop();
   const [tab, setTab] = useState('pending');
@@ -73,7 +74,9 @@ function LocalQueueView() {
   );
 }
 
+/** Motorcycle card for displaying intake records from Supabase with model, plate, and observations. */
 function MotoMecanicoCard({ moto }) {
+  /** Format intake date as a localized short date string. */
   const fechaFormateada = moto.fecha_ingreso
     ? new Date(moto.fecha_ingreso).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })
     : null;
@@ -124,6 +127,7 @@ function MotoMecanicoCard({ moto }) {
   );
 }
 
+/** Read-only list of motorcycle intake records fetched from Supabase with auto-refresh. */
 function SupabaseIngresosList() {
   const [motos, setMotos] = useState([]);
   const [loading, setLoading] = useState(true);

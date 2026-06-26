@@ -20,6 +20,7 @@ const HistoryPage  = lazy(() => import('@pages/HistoryPage'))
 const ProfilePage  = lazy(() => import('@pages/ProfilePage'))
 const WorkshopPage = lazy(() => import('@pages/WorkshopPage'))
 
+/** Redirects users to their role-appropriate home page. */
 function RoleRedirect() {
   const user = useAuthStore((s) => s.user)
   if (!user) return <Navigate to="/login" replace />

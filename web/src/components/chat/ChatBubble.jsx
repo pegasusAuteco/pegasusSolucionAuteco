@@ -7,6 +7,7 @@
  */
 import VoiceMessagePlayer from './VoiceMessagePlayer';
 
+/** Check if a timestamp is within the last 60 seconds. */
 function isVeryRecent(createdAt) {
   return Date.now() - new Date(createdAt).getTime() < 60_000;
 }
@@ -21,6 +22,8 @@ export default function ChatBubble({ message, sender, text, timestamp }) {
   const isVoice = message?.message_type === 'voice' && message?.audio_id;
   const shouldAutoPlay = isIA && isVoice && isVeryRecent(message.created_at);
 
+  /** Render basic markdown bold (**text**) as React elements. */
+  /** Render basic markdown bold (**text**) as React elements. */
   const renderMarkdown = (text) => {
     if (!text) return '';
     const parts = text.split(/(\*\*.*?\*\*)/g);

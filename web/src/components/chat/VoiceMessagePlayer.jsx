@@ -7,6 +7,7 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
 import { Play, Pause } from 'lucide-react'
 
+/** Format seconds as MM:SS display string. */
 function fmt(sec) {
   if (!isFinite(sec) || isNaN(sec)) return '--:--'
   const m = Math.floor(sec / 60)
@@ -14,6 +15,7 @@ function fmt(sec) {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
+/** Pause all audio elements except the given one to prevent overlap. */
 function pauseOtherAudio(except) {
   document.querySelectorAll('audio').forEach(a => { if (a !== except) a.pause() })
 }
@@ -68,7 +70,7 @@ export default function VoiceMessagePlayer({ src, autoPlay = false, accent = '#6
       if (hasPlayedRef.current) return
       hasPlayedRef.current = true
       pauseOtherAudio(audio)
-      audio.play().catch(err => console.warn('[voice] autoplay bloqueado:', err))
+      audio.play().catch(err => console.warn('[voice] autoplay blocked:', err))
     }
 
     audio.addEventListener('canplay', handleCanPlay)
@@ -115,7 +117,7 @@ export default function VoiceMessagePlayer({ src, autoPlay = false, accent = '#6
         disabled={loading}
         className="group flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-full bg-white/60 dark:bg-black/30 hover:bg-white dark:hover:bg-black/50 transition-all duration-300 shadow-[0_2px_8px_rgba(0,0,0,0.06)] disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-black/10 dark:focus:ring-white/10 active:scale-95"
         style={{ color: accent }}
-        aria-label={playing ? 'Pausar' : 'Reproducir'}
+        aria-label={playing ? 'Pause' : 'Play'}
       >
         {playing
           ? <Pause className="w-4 h-4 transition-transform group-hover:scale-105" fill="currentColor" strokeWidth={1.5} />
@@ -129,12 +131,12 @@ export default function VoiceMessagePlayer({ src, autoPlay = false, accent = '#6
           onClick={handleSeek}
           className="group/bar relative h-5 flex items-center cursor-pointer w-full"
           role="slider"
-          aria-label="Progreso del audio"
+          aria-label="Audio progress"
         >
-          {/* Fondo semi-transparente de la barra */}
+          {/* Semi-transparent bar background */}
           <div className="absolute w-full h-1.5 bg-black/10 dark:bg-white/10 rounded-full transition-colors group-hover/bar:bg-black/15 dark:group-hover/bar:bg-white/15" />
           
-          {/* Progreso activo con degradado sutil */}
+          {/* Active progress with subtle gradient */}
           <div
             className="absolute h-1.5 left-0 rounded-full transition-all"
             style={{ 
@@ -144,7 +146,7 @@ export default function VoiceMessagePlayer({ src, autoPlay = false, accent = '#6
             }}
           />
 
-          {/* Indicador de posición (Thumb) minimalista */}
+          {/* Minimalist position indicator (Thumb) */}
           <div
             className="absolute w-2.5 h-2.5 bg-white rounded-full shadow-[0_1px_3px_rgba(0,0,0,0.3)] opacity-0 group-hover/bar:opacity-100 transition-all duration-200 transform -translate-x-1/2 hover:scale-125"
             style={{ left: `${progress}%`, backgroundColor: accent }}

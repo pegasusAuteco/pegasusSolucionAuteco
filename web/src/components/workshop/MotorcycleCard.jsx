@@ -202,7 +202,7 @@ export default function MotorcycleCard({ entry }) {
                   await workshopService.finishRepair(entry.id)
                   finishRepair(entry.id)
                 } catch (err) {
-                  addToast('error', `❌ Error al completar: ${err?.response?.data?.detail ?? err.message ?? 'Error desconocido'}`)
+                  addToast('error', ` Error al completar: ${err?.response?.data?.detail ?? err.message ?? 'Error desconocido'}`)
                 }
               }}
               className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50 rounded-lg transition-colors"
@@ -222,7 +222,7 @@ export default function MotorcycleCard({ entry }) {
                   await workshopService.notifyWhatsApp(entry.id, entry.parts)
                   addToast('success', '¡Mensaje de WhatsApp enviado al cliente!')
                 } catch (err) {
-                  addToast('error', `❌ Error al enviar mensaje: ${err?.message || 'Error desconocido'}`)
+                  addToast('error', ` Error al enviar mensaje: ${err?.message || 'Error desconocido'}`)
                 } finally {
                   setIsSending(false)
                 }
@@ -244,7 +244,7 @@ export default function MotorcycleCard({ entry }) {
                     await workshopService.deleteIngreso(entry.id)
                     removeEntry(entry.id)
                   } catch (err) {
-                    addToast('error', `❌ Error al cerrar pedido: ${err?.response?.data?.detail ?? err.message ?? 'Error desconocido'}`)
+                    addToast('error', ` Error al cerrar pedido: ${err?.response?.data?.detail ?? err.message ?? 'Error desconocido'}`)
                   }
                 }
               }}
