@@ -178,8 +178,14 @@ const ChatContainer = () => {
       recorder.start();
       mediaRecorderRef.current = recorder;
       setIsRecording(true);
-    } catch {
-      // Silent failure if the user denies microphone permissions
+    } catch (err) {
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        addToast('error', 'Permiso de micrófono denegado. Habilita el acceso en tu navegador.');
+      } else if (err.name === 'NotFoundError') {
+        addToast('error', 'No se encontró ningún micrófono conectado.');
+      } else {
+        addToast('error', 'Error al acceder al micrófono.');
+      }
     }
   }, []);
 
