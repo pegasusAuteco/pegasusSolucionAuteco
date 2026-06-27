@@ -1,3 +1,12 @@
+/**
+ * Admin dashboard page with metrics and manual management.
+ *
+ * Features:
+ * - Real-time usage metrics (users, conversations, messages)
+ * - Motorcycle manual upload with PDF processing and image attachment
+ * - User role management
+ * - Manual catalog with delete capability
+ */
 import { useState } from 'react'
 import { Users, MessageSquare, Activity, FilePlus2, Upload, X, Construction, Zap, Shield, Trash2 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -39,6 +48,7 @@ export default function AdminPage() {
     }
   })
 
+  /** Trigger role update mutation for a user. */
   const handleRoleChange = (userId, newRole) => {
     updateRoleMutation.mutate({ userId, role: newRole })
   }
@@ -67,6 +77,7 @@ export default function AdminPage() {
     }
   })
 
+  /** Validate inputs and submit manual upload via FormData. */
   const handleUploadManual = () => {
     if (!newManual.name || !newManual.pdf) return
     if (newManual.image && !newManual.image.type.startsWith('image/png') && !newManual.image.name.endsWith('.png')) {
@@ -82,7 +93,7 @@ export default function AdminPage() {
     uploadManualMutation.mutate(formData)
   }
 
-  // Filtrar para mostrar solo los manuales nuevos (los que tienen imagen asociada)
+  // Filter to show only new manuals (those with an associated image)
   const validDbManuals = (dbManuals || []).filter(manual => manual.image)
 
   const displayMetrics = [
@@ -214,7 +225,7 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* Gestión de Usuarios */}
+      {/* User Management */}
       <div style={{ animationDelay: '800ms' }} className="animate-fade-in-up mt-6 bg-white dark:bg-gray-900/60 border border-gray-100 dark:border-gray-800 rounded-2xl p-5 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-gray-700 dark:text-gray-200 flex items-center gap-2">
@@ -274,7 +285,7 @@ export default function AdminPage() {
         )}
       </div>
 
-      {/* Modal Añadir Manual */}
+      {/* Upload Manual Modal */}
       {isUploadModalOpen && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden animate-in zoom-in-95 duration-200">

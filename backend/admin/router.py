@@ -1,3 +1,9 @@
+"""
+Admin router for user management operations.
+
+Provides endpoints for listing all users and updating user roles.
+Mounted at /admin prefix.
+"""
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,10 +16,12 @@ from auth.models.user import User, UserRole
 router = APIRouter()
 
 class UserRoleUpdate(BaseModel):
+    """Request schema for updating a user's role."""
     role: UserRole
 
-@router.get("/users", summary="Listar todos los usuarios")
+@router.get("/users", summary="List all users")
 async def get_all_users(db: AsyncSession = Depends(get_session)):
+    """Returns all registered users sorted by creation date (newest first)."""
     try:
         stmt = select(User).order_by(User.created_at.desc())
         result = await db.execute(stmt)
@@ -32,8 +40,13 @@ async def get_all_users(db: AsyncSession = Depends(get_session)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.patch("/users/{user_id}/role", summary="Actualizar rol de un usuario")
+@router.patch("/users/{user_id}/role", summary="Update user role")
 async def update_user_role(user_id: int, payload: UserRoleUpdate, db: AsyncSession = Depends(get_session)):
+    """
+    Updates the role of a specific user.
+
+    Returns 404 if the user doesn't exist.
+    """
     try:
         stmt = (
             update(User)

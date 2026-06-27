@@ -1,3 +1,14 @@
+/**
+ * Main chat container component with message display and input.
+ *
+ * Features:
+ * - WebSocket streaming with POST fallback
+ * - Voice recording with touch gestures (hold-to-record, swipe-to-cancel, lock-to-handsfree)
+ * - Image attachment support
+ * - Optimistic message updates
+ * - Auto-scroll to latest messages
+ * - Welcome screen when no messages exist
+ */
 import { useState, useRef, useEffect, useCallback } from 'react';
 import ChatBubble from './ChatBubble';
 import { Send, Loader2, Mic, MicOff, ImagePlus, X, Lock, Unlock, ChevronUp, Trash2 } from 'lucide-react';
@@ -23,8 +34,8 @@ const ChatContainer = () => {
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [isLocked, setIsLocked] = useState(false);
   const [isFingerDown, setIsFingerDown] = useState(false);
-  // Tipo de puntero primario: coarse = táctil (móvil/tablet) → gesto;
-  // fine = mouse (desktop) → clic-clic. Bifurca el modo del mic.
+  // Primary pointer type: coarse = touch (mobile/tablet) → gesture;
+  // fine = mouse (desktop) → click-click. Bifurcates mic mode.
   const [isTouch, setIsTouch] = useState(
     () => typeof window !== 'undefined' &&
           window.matchMedia('(pointer: coarse)').matches
@@ -57,8 +68,8 @@ const ChatContainer = () => {
   const pausedAudioRef = useRef(null);
   const isLockedRef = useRef(false);
   const lockRectRef = useRef(null);
-  const startPosRef = useRef(null);   // {x,y} del puntero al iniciar el gesto
-  const origRectRef = useRef(null);   // rect ORIGINAL del botón mic (sin translate)
+  const startPosRef = useRef(null);   // {x,y} of the pointer at gesture start
+  const origRectRef = useRef(null);   // ORIGINAL mic button rect (without translate)
 
   const user = useAuthStore((s) => s.user);
   const addToast = useToastStore((s) => s.addToast);
@@ -78,12 +89,12 @@ const ChatContainer = () => {
     },
   );
 
-  // Reinicia fallback al cambiar de conversación
   useEffect(() => {
+    // Reset fallback when switching conversations
     setUsePostFallback(false);
   }, [activeConversationId]);
 
-  // Si WebSocket no conecta en 3s, cae al POST
+  // Fall back to POST if WebSocket does not connect within 3 seconds
   useEffect(() => {
     if (!activeConversationId || isConnected) return;
     const timer = setTimeout(() => setUsePostFallback(true), 3000);
@@ -112,6 +123,7 @@ const ChatContainer = () => {
   }, [input]);
 
 
+  /** Select the best supported MIME type for MediaRecorder audio recording. */
   const pickMimeType = () => {
     const candidates = [
       'audio/webm;codecs=opus',
@@ -122,6 +134,7 @@ const ChatContainer = () => {
     return candidates.find(t => MediaRecorder.isTypeSupported(t)) || '';
   };
 
+  /** Start audio recording with waveform visualization. */
   const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -165,11 +178,18 @@ const ChatContainer = () => {
       recorder.start();
       mediaRecorderRef.current = recorder;
       setIsRecording(true);
-    } catch {
-      // Fallo silencioso si el usuario no otorga permisos de micrófono
+    } catch (err) {
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        addToast('error', 'Permiso de micrófono denegado. Habilita el acceso en tu navegador.');
+      } else if (err.name === 'NotFoundError') {
+        addToast('error', 'No se encontró ningún micrófono conectado.');
+      } else {
+        addToast('error', 'Error al acceder al micrófono.');
+      }
     }
   }, []);
 
+  /** Stop audio recording and clean up audio context and timer. */
   const stopRecording = useCallback(() => {
     if (animFrameRef.current) { cancelAnimationFrame(animFrameRef.current); animFrameRef.current = null; }
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
@@ -183,7 +203,7 @@ const ChatContainer = () => {
     resetMicDrag();
   }, []);
 
-  // Snap-back animado del mic a su posición original + limpieza del arrastre
+  // Animated snap-back of mic to its original position + drag cleanup
   const resetMicDrag = useCallback(() => {
     if (btnRef.current) {
       btnRef.current.style.transition = 'transform 0.2s ease-out';
@@ -196,8 +216,8 @@ const ChatContainer = () => {
     origRectRef.current = null;
   }, []);
 
-  // Mantener isTouch al día si cambia el puntero primario (raro, p.ej.
-  // conectar/desconectar dispositivos).
+  // Keep isTouch up to date if primary pointer changes (rare, e.g.
+  // connecting/disconnecting devices).
   useEffect(() => {
     const mq = window.matchMedia('(pointer: coarse)');
     const handler = (e) => setIsTouch(e.matches);
@@ -343,7 +363,7 @@ const ChatContainer = () => {
     };
   }, [isRecording]);
 
-  // Limpia los listeners globales si el componente se desmonta mientras graba
+  // Clean up global listeners if the component unmounts while recording
   useEffect(() => {
     return () => {
       if (releaseHandlerRef.current) {
@@ -366,18 +386,19 @@ const ChatContainer = () => {
 
   useEffect(() => { conversationIdRef.current = activeConversationId; }, [activeConversationId]);
 
+  /** Send recorded audio blob to the backend for transcription and response. */
   const enviarAudio = useCallback(async (blob, convId) => {
     setIsVoiceBusy(true);
     let result = null;
     try {
       result = await chatService.sendVoice(blob, convId);
     } catch (err) {
-      const detail = err?.detail || err?.message || 'Error al procesar el audio';
+      const detail = err?.detail || err?.message || 'Error processing audio';
       addToast('error', detail);
     } finally {
       if (result) {
-        // El backend siempre guarda la respuesta del asistente (incluso en silencio),
-        // así que recargamos el historial para mostrar la burbuja con texto y audio.
+        // The backend always saves the assistant response (even on silence),
+        // so we reload history to display the bubble with text and audio.
         queryClient.invalidateQueries({ queryKey: ['messages', convId] });
       }
       setIsVoiceBusy(false);
@@ -395,17 +416,18 @@ const ChatContainer = () => {
     }
   }, [activeConversationId, enviarAudio]);
 
+  /** Handle mic button press with gesture-based recording (touch) or click-based (desktop). */
   const handleMicPress = (e) => {
     if (isLockedRef.current) return;
     if (e.type === 'touchstart') {
       e.preventDefault();
       isTouchRef.current = true;
     } else if (isTouchRef.current) {
-      return; // descarta el mousedown sintético que el browser emite tras touchstart
+      return; // discard synthetic mousedown emitted by browser after touchstart
     }
 
-    // Capturar posición inicial del puntero y rect ORIGINAL del botón
-    // (para el arrastre visual y para anclar la geometría de zonas).
+    // Capture initial pointer position and ORIGINAL mic button rect
+    // (for visual dragging and for anchoring zone geometry).
     const startX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
     const startY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
     startPosRef.current = { x: startX, y: startY };
@@ -413,8 +435,8 @@ const ChatContainer = () => {
 
     const handleRelease = (ev) => {
       if (isLockedRef.current) {
-        // manos libres confirmado: soltó estando trabado.
-        // NO enviar ni cancelar — los botones Enviar/Cancelar mandan.
+        // Hands-free confirmed: released while locked.
+        // Do NOT send or cancel — the Send/Cancel buttons handle that.
         window.removeEventListener('mouseup', releaseHandlerRef.current);
         window.removeEventListener('touchend', releaseHandlerRef.current);
         window.removeEventListener('touchcancel', releaseHandlerRef.current);
@@ -443,8 +465,8 @@ const ChatContainer = () => {
       } else {
         const x = ev.type.startsWith('touch') ? ev.changedTouches[0].clientX : ev.clientX;
         const y = ev.type.startsWith('touch') ? ev.changedTouches[0].clientY : ev.clientY;
-        // Usar el rect ORIGINAL (no el del botón desplazado por el arrastre)
-        // para clasificar cancelar al soltar.
+        // Use the ORIGINAL rect (not the one affected by drag translation)
+        // to classify cancel on release.
         const r = origRectRef.current ?? btnRef.current?.getBoundingClientRect();
         if (r) {
           const centerX = r.left + r.width / 2;
@@ -472,9 +494,9 @@ const ChatContainer = () => {
     const handleMove = (ev) => {
       const p = ev.touches ? ev.touches[0] : ev;
 
-      // GEOMETRÍA: usar SIEMPRE un rect cacheado (estable), NUNCA el rect en
-      // vivo, que se contaminaría con el translate visual y descuadraría las
-      // zonas. Trabado → lockRectRef; si no → rect original del botón.
+      // GEOMETRY: ALWAYS use a cached rect (stable), NEVER the live rect,
+      // which gets contaminated by the translate and misaligns the zones.
+      // Locked → lockRectRef; otherwise → original button rect.
       let r;
       if (isLockedRef.current && lockRectRef.current) {
         r = lockRectRef.current;
@@ -484,8 +506,8 @@ const ChatContainer = () => {
         return;
       }
 
-      // VISUAL: arrastrar el mic siguiendo el dedo (ambos ejes), por DOM
-      // directo, sin setState. La geometría de arriba NO se ve afectada.
+      // VISUAL: drag the mic following the finger (both axes), via direct
+      // DOM, without setState. The geometry above is NOT affected.
       if (startPosRef.current && btnRef.current) {
         const dx = p.clientX - startPosRef.current.x;
         const dy = p.clientY - startPosRef.current.y;
@@ -497,29 +519,29 @@ const ChatContainer = () => {
       const dentroCorredor = Math.abs(p.clientX - centerX) < r.width / 2 + CANCEL_HORIZ;
       const arriba = p.clientY < r.top;
 
-      // DESTRABAR: ya estaba trabado — evaluar si el dedo bajó de vuelta
+      // UNLOCK: was locked — evaluate if finger moved back down
       if (isLockedRef.current) {
         const yaNoArriba = !arriba || !dentroCorredor || p.clientY >= r.top - LOCK_THRESHOLD;
         if (yaNoArriba) {
           setIsLocked(false);
           isLockedRef.current = false;
           lockRectRef.current = null;
-          // cae a la clasificación normal de zonas
+          // falls through to normal zone classification
         } else {
-          return; // sigue trabado y arriba, nada que hacer
+          return; // still locked and above, nothing to do
         }
       }
 
-      // TRABAR: subió recto más allá del umbral
+      // LOCK: moved straight up beyond the threshold
       if (arriba && dentroCorredor && p.clientY < r.top - LOCK_THRESHOLD) {
-        lockRectRef.current = r;   // cachear el rect ANTES de que el mic se desmonte
+        lockRectRef.current = r;   // cache the rect BEFORE the mic unmounts
         setIsLocked(true);
         isLockedRef.current = true;
         setIsCancelZone(false);
         return;
       }
 
-      // CANCELAR: fuera del rect, pero NO en el corredor recto hacia arriba
+      // CANCEL: outside the rect, but NOT in the straight-up corridor
       const fueraRect = p.clientX < r.left || p.clientX > r.right || p.clientY < r.top || p.clientY > r.bottom;
       const subiendoRectoSinTrabar = arriba && dentroCorredor;
       setIsCancelZone(fueraRect && !subiendoRectoSinTrabar);
@@ -543,6 +565,7 @@ const ChatContainer = () => {
     startRecording();
   };
 
+  /** Send locked (hands-free) recording. */
   const enviarGrabacionTrabada = () => {
     setIsFingerDown(false);
     setIsLocked(false);
@@ -551,6 +574,7 @@ const ChatContainer = () => {
     stopRecording();
   };
 
+  /** Cancel locked (hands-free) recording and restore paused audio. */
   const cancelarGrabacionTrabada = () => {
     cancellingRef.current = true;
     setIsFingerDown(false);
@@ -565,6 +589,7 @@ const ChatContainer = () => {
     stopRecording();
   };
 
+  /** Read selected image file and set preview state. */
   const handleImageChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -575,8 +600,10 @@ const ChatContainer = () => {
     e.target.value = '';
   };
 
+  /** Clear image preview and name state. */
   const clearImage = () => { setImagePreview(null); setImageName(null); };
 
+  /** Send message via WebSocket or POST fallback depending on connection state. */
   const doSend = useCallback((convId, message) => {
     if (isConnected && !usePostFallback) {
       wsSend(message);
@@ -588,6 +615,7 @@ const ChatContainer = () => {
     }
   }, [isConnected, usePostFallback, wsSend, sendMessage, queryClient]);
 
+  /** Handle form submission: create conversation if needed, then send message. */
   const handleSend = (e) => {
     e.preventDefault();
     const trimmed = input.trim();
@@ -642,6 +670,7 @@ const ChatContainer = () => {
     );
   }
 
+  /** Render the chat input form with image preview, voice recording, and send button. */
   const chatInput = (formClass, containerClass) => (
     <div className={formClass}>
       {imagePreview && (
@@ -655,12 +684,12 @@ const ChatContainer = () => {
       )}
 
       <form onSubmit={handleSend} className={`flex items-end gap-2 relative px-2 py-2 ${containerClass}`}>
-        {/* IZQUIERDA: botón de imagen */}
+        {/* LEFT: image button */}
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={isBusy}
-          title="Adjuntar imagen"
+          title="Attach image"
           className={`rounded-full p-2.5 shrink-0 self-end transition-colors ${
             imagePreview ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : 'text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
           } disabled:opacity-40`}
@@ -669,22 +698,22 @@ const ChatContainer = () => {
         </button>
         <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
 
-        {/* CENTRO: textarea u onda/timer */}
+        {/* CENTER: textarea or waveform/timer */}
         <div className="flex-1 min-w-0 overflow-hidden flex items-center min-h-[40px]">
           {isRecording ? (
             !isTouch ? (
-              // DESKTOP: clic-clic. Controles agrupados a la DERECHA (estilo
-              // WhatsApp): [espaciador] [🗑] [tiempo] [onda corta] [Enviar].
+              // DESKTOP: click-click. Controls grouped to the RIGHT (WhatsApp style):
+              // [spacer] [🗑] [time] [short waveform] [Send].
               <div className="w-full flex items-center gap-2 min-h-[40px]">
-                {/* espaciador que empuja el grupo a la derecha */}
+                {/* spacer that pushes the group to the right */}
                 <div className="flex-1 min-w-0" />
 
                 <button
                   type="button"
                   onClick={cancelarGrabacionTrabada}
                   className="shrink-0 rounded-full p-2 text-red-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                  title="Cancelar grabación"
-                  aria-label="Cancelar"
+                  title="Cancel recording"
+                  aria-label="Cancel"
                 >
                   <Trash2 className="h-5 w-5" />
                 </button>
@@ -696,8 +725,8 @@ const ChatContainer = () => {
                   type="button"
                   onClick={enviarGrabacionTrabada}
                   className="shrink-0 rounded-full p-2 bg-auteco-red text-white hover:opacity-90 transition-colors"
-                  title="Enviar"
-                  aria-label="Enviar"
+                  title="Send"
+                  aria-label="Send"
                 >
                   <Send className="w-4 h-4" />
                 </button>
@@ -712,8 +741,8 @@ const ChatContainer = () => {
                   type="button"
                   onClick={cancelarGrabacionTrabada}
                   className="shrink-0 rounded-full p-[7px] bg-transparent border border-gray-400 hover:bg-gray-500/10 transition-colors"
-                  title="Cancelar grabación"
-                  aria-label="Cancelar grabación"
+                  title="Cancel recording"
+                  aria-label="Cancel recording"
                 >
                   <span className="block w-4 h-4 border border-red-500 rounded-[2px]" />
                 </button>
@@ -721,8 +750,8 @@ const ChatContainer = () => {
                   type="button"
                   onClick={enviarGrabacionTrabada}
                   className="shrink-0 rounded-full p-2 bg-auteco-red text-white hover:opacity-90 transition-colors"
-                  title="Enviar"
-                  aria-label="Enviar"
+                  title="Send"
+                  aria-label="Send"
                 >
                   <Send className="w-4 h-4" />
                 </button>
@@ -758,8 +787,8 @@ const ChatContainer = () => {
           )}
         </div>
 
-        {/* DERECHA: slot único que alterna MIC ↔ ENVIAR. En desktop el mic solo
-            aparece cuando NO se graba (al grabar, los controles van al CENTRO). */}
+        {/* RIGHT: single slot that alternates MIC ↔ SEND. On desktop the mic only
+            appears when NOT recording (while recording, controls go to the CENTER). */}
         {((isTouch && isRecording && !isLocked) || (!isRecording && !canSend)) ? (
           <div className="relative shrink-0 self-end">
             <button
@@ -770,8 +799,8 @@ const ChatContainer = () => {
                 : { onClick: startRecording })}
               disabled={isBusy}
               title={isTouch
-                ? (isRecording ? 'Suelta para enviar' : 'Mantén presionado para grabar')
-                : 'Clic para grabar'}
+                ? (isRecording ? 'Release to send' : 'Hold to record')
+                : 'Click to record'}
               className={`rounded-full p-2.5 transition-colors ${
                 isRecording && isCancelZone ? 'text-red-600 dark:text-red-400'
                 : isRecording              ? 'animate-pulse bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'

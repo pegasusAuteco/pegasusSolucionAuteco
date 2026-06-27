@@ -1,3 +1,11 @@
+/**
+ * Mechanic dashboard component with dual-view tabs.
+ *
+ * Switches between:
+ * - "Motos Ingresadas": View of Supabase intake records (read-only)
+ * - "Cola de Trabajo": Local repair queue with MotorcycleCard management
+ * Includes refresh, loading, and error states for the Supabase view.
+ */
 import { useState, useEffect, useCallback } from 'react';
 import { useWorkshop } from '@hooks/useWorkshop';
 import MotorcycleCard from './MotorcycleCard';
@@ -7,6 +15,11 @@ import {
 } from 'lucide-react';
 import { workshopService } from '../../services/workshopService';
 
+/**
+ * Local repair queue view with pending/finished tabs.
+ * Filters and sorts the queue by status and timestamp, rendering
+ * a MotorcycleCard for each entry.
+ */
 function LocalQueueView() {
   const { queue } = useWorkshop();
   const [tab, setTab] = useState('pending');
@@ -65,7 +78,9 @@ function LocalQueueView() {
   );
 }
 
+/** Motorcycle card for displaying intake records from Supabase with model, plate, and observations. */
 function MotoMecanicoCard({ moto }) {
+  /** Format intake date as a localized short date string. */
   const fechaFormateada = moto.fecha_ingreso
     ? new Date(moto.fecha_ingreso).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })
     : null;
@@ -116,12 +131,20 @@ function MotoMecanicoCard({ moto }) {
   );
 }
 
+/** Read-only list of motorcycle intake records fetched from Supabase with auto-refresh. */
 function SupabaseIngresosList() {
   const [motos, setMotos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastRefresh, setLastRefresh] = useState(new Date());
 
+  /**
+   * Fetches intake records from Supabase via the BFF.
+   * Updates local state with the received data and records the
+   * last refresh timestamp. Handles network errors and updates
+   * loading/error states accordingly.
+   * @returns {Promise<void>}
+   */
   const fetchMotos = useCallback(async () => {
     setLoading(true);
     setError(null);

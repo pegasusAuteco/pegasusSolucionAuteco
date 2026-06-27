@@ -1,3 +1,12 @@
+/**
+ * User registration page with role selection.
+ *
+ * Features:
+ * - Role-based registration (mecanico/secretario)
+ * - Password confirmation and strength validation
+ * - Optional workshop/company field
+ * - Zod schema validation
+ */
 import { useState } from 'react'
 import { z } from 'zod'
 import { User, Mail, Lock, Building2, AlertCircle, Wrench, ClipboardList, ShieldCheck } from 'lucide-react'
@@ -53,16 +62,19 @@ export default function RegisterPage() {
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  /** Sync form field value to state and clear its validation error. */
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
     if (errors[e.target.name]) setErrors({ ...errors, [e.target.name]: '' })
   }
 
+  /** Set the selected role and clear its validation error. */
   const selectRole = (role) => {
     setFormData({ ...formData, rol: role })
     if (errors.rol) setErrors({ ...errors, rol: '' })
   }
 
+  /** Validate form with Zod and submit registration data. */
   const onSubmit = async (e) => {
     e.preventDefault()
 
@@ -99,6 +111,7 @@ export default function RegisterPage() {
     }
   }
 
+  /** Generate Tailwind classes for form inputs with error state highlighting. */
   const inputClass = (field) =>
     `block w-full pl-10 pr-3 py-2.5 border ${
       errors[field] ? 'border-red-500' : 'border-gray-300 dark:border-gray-700'

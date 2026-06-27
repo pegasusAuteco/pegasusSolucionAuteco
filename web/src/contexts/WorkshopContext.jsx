@@ -1,8 +1,16 @@
+/**
+ * Workshop context provider for managing local repair queue state.
+ *
+ * Persists the queue and active repair ID to localStorage.
+ * Provides operations for adding, updating, and completing workshop entries,
+ * as well as managing parts lists for each entry.
+ */
 import { createContext, useState, useEffect, useCallback } from 'react';
 
 export const WorkshopContext = createContext(undefined);
 
-function readFromStorage() {
+  /** Read and parse workshop queue from localStorage, with fallback defaults. */
+  function readFromStorage() {
   try {
     const item = window.localStorage.getItem('workshop-storage');
     if (!item) return { queue: [], activeRepairId: null };
@@ -31,6 +39,7 @@ export function WorkshopProvider({ children }) {
     }
   }, [queue, activeRepairId]);
 
+  /** Register a new workshop entry and add it to the queue. */
   const registerEntry = useCallback((entryData) => {
     setQueue((prev) => [
       ...prev,
@@ -38,10 +47,12 @@ export function WorkshopProvider({ children }) {
     ]);
   }, []);
 
+  /** Update an existing workshop entry with new data. */
   const updateEntry = useCallback((entryId, updatedData) => {
     setQueue((prev) => prev.map((e) => (e.id === entryId ? { ...e, ...updatedData } : e)));
   }, []);
 
+  /** Add a replacement part to a workshop entry. */
   const addPartToEntry = useCallback((entryId, partData) => {
     setQueue((prev) =>
       prev.map((e) =>
@@ -50,17 +61,20 @@ export function WorkshopProvider({ children }) {
     );
   }, []);
 
+  /** Remove a part from a workshop entry's parts list. */
   const removePartFromEntry = useCallback((entryId, partId) => {
     setQueue((prev) =>
       prev.map((e) => (e.id === entryId ? { ...e, parts: e.parts.filter((p) => p.id !== partId) } : e))
     );
   }, []);
 
+  /** Remove a workshop entry entirely from the queue. */
   const removeEntry = useCallback((entryId) => {
     setQueue((prev) => prev.filter((e) => e.id !== entryId));
     setActiveRepairId((prev) => (prev === entryId ? null : prev));
   }, []);
 
+  /** Mark a workshop entry's repair as finished. */
   const finishRepair = useCallback((entryId) => {
     setQueue((prev) => prev.map((e) => (e.id === entryId ? { ...e, status: 'finished' } : e)));
     setActiveRepairId((prev) => (prev === entryId ? null : prev));

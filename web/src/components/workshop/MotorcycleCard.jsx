@@ -1,3 +1,10 @@
+/**
+ * Workshop motorcycle card component with full repair management.
+ *
+ * Displays client info, observations, mechanic notes, parts table,
+ * and action buttons (Edit, Complete, WhatsApp notification, Close order).
+ * Used in the MechanicDashboard's local queue view.
+ */
 import React, { useState, useEffect } from 'react';
 import { useWorkshop } from '@hooks/useWorkshop';
 import { useToastStore } from '../../store/toastStore';
@@ -26,6 +33,12 @@ export default function MotorcycleCard({ entry }) {
     return () => clearInterval(interval);
   }, [entry.timestamp]);
 
+  /**
+   * Adds a spare part to the current workshop entry.
+   * Validates that the name is not empty and quantity is greater than 0,
+   * then resets the part form fields.
+   * @param {React.FormEvent<HTMLFormElement>} e - Form submit event.
+   */
   const handleAddPart = (e) => {
     e.preventDefault();
     if (partName.trim() && partQty > 0) {
@@ -195,7 +208,7 @@ export default function MotorcycleCard({ entry }) {
                   await workshopService.finishRepair(entry.id)
                   finishRepair(entry.id)
                 } catch (err) {
-                  addToast('error', `❌ Error al completar: ${err?.response?.data?.detail ?? err.message ?? 'Error desconocido'}`)
+                  addToast('error', ` Error al completar: ${err?.response?.data?.detail ?? err.message ?? 'Error desconocido'}`)
                 }
               }}
               className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50 rounded-lg transition-colors"
@@ -215,7 +228,7 @@ export default function MotorcycleCard({ entry }) {
                   await workshopService.notifyWhatsApp(entry.id, entry.parts)
                   addToast('success', '¡Mensaje de WhatsApp enviado al cliente!')
                 } catch (err) {
-                  addToast('error', `❌ Error al enviar mensaje: ${err?.message || 'Error desconocido'}`)
+                  addToast('error', ` Error al enviar mensaje: ${err?.message || 'Error desconocido'}`)
                 } finally {
                   setIsSending(false)
                 }
@@ -237,7 +250,7 @@ export default function MotorcycleCard({ entry }) {
                     await workshopService.deleteIngreso(entry.id)
                     removeEntry(entry.id)
                   } catch (err) {
-                    addToast('error', `❌ Error al cerrar pedido: ${err?.response?.data?.detail ?? err.message ?? 'Error desconocido'}`)
+                    addToast('error', ` Error al cerrar pedido: ${err?.response?.data?.detail ?? err.message ?? 'Error desconocido'}`)
                   }
                 }
               }}

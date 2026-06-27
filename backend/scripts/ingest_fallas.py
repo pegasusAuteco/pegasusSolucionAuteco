@@ -1,10 +1,20 @@
+"""
+Fault database ingestion script.
+
+Reads the fallas_comunes.json knowledge base file and ingests
+fault records into the Supabase fallas_diagnostico table with
+generated embeddings for vector search.
+
+Usage:
+    python scripts/ingest_fallas.py
+"""
 import os
 import sys
 import json
 import logging
 from pathlib import Path
 
-# Agregar el directorio backend al path para importar config y supabase_client
+# Add the backend directory to path for importing config and supabase_client
 backend_dir = Path(__file__).resolve().parent.parent
 sys.path.append(str(backend_dir))
 
@@ -17,6 +27,7 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 FALLAS_TABLE = 'fallas_diagnostico'
 
 def generate_embedding(client: OpenAI, text: str) -> list[float]:
+    """Generates an embedding vector for the given text using OpenAI's API."""
     text = text.replace('\n', ' ')
     response = client.embeddings.create(
         model=EMBEDDING_MODEL,
@@ -25,8 +36,14 @@ def generate_embedding(client: OpenAI, text: str) -> list[float]:
     return response.data[0].embedding
 
 def main():
+    """
+    Main ingestion function.
+
+    Reads fallas_comunes.json, generates embeddings for each fault record,
+    and inserts them into the Supabase fallas_diagnostico table.
+    """
     if not OPENAI_API_KEY:
-        logging.error("Falta OPENAI_API_KEY en las variables de entorno.")
+        logging.error("OPENAI_API_KEY missing from environment variables.")
         sys.exit(1)
 
     openai_client = OpenAI(api_key=OPENAI_API_KEY)
@@ -35,18 +52,18 @@ def main():
     json_path = backend_dir.parent / "knowledge_base" / "fallas_comunes.json"
     
     if not json_path.exists():
-        logging.error(f"Archivo no encontrado: {json_path}")
+        logging.error(f"File not found: {json_path}")
         sys.exit(1)
 
     with open(json_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
 
-    logging.info(f"🚀 Iniciando ingesta en tabla: {FALLAS_TABLE}...")
+    logging.info(f"Starting ingestion into table: {FALLAS_TABLE}...")
 
     for item in data:
         modelo = item.get("modelo")
         fallas = item.get("fallas", [])
-        logging.info(f"\n🏍️ Modelo: {modelo}")
+        logging.info(f"\nModel: {modelo}")
 
         for falla in fallas:
             sintoma = falla.get("sintoma", "")
@@ -55,9 +72,9 @@ def main():
             solucion = falla.get("solucion", "")
             pasos_revision = falla.get("pasos_revision", [])
 
-            # Texto enriquecido para el embedding
+            # Enriched text for embedding generation
             search_content = f"Modelo: {modelo}. Síntoma: {sintoma}. Componente: {componente}."
-            logging.info(f"   - Generando embedding para: {componente}...")
+            logging.info(f"   - Generating embedding for: {componente}...")
             
             embedding = generate_embedding(openai_client, search_content)
 
@@ -73,11 +90,11 @@ def main():
 
             try:
                 response = supabase.table(FALLAS_TABLE).insert(payload).execute()
-                logging.info(f"   ✅ Falla e instrucciones de revisión insertadas.")
+                logging.info(f"   Fault and review instructions inserted successfully.")
             except Exception as e:
-                logging.error(f"   ❌ Error insertando falla: {e}")
+                logging.error(f"   Error inserting fault: {e}")
 
-    logging.info("\n✨ Ingesta completada con éxito.")
+    logging.info("\nIngestion completed successfully.")
 
 if __name__ == "__main__":
     main()

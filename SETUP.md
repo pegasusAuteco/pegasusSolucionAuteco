@@ -1,91 +1,80 @@
-# Guía de Instalación y Configuración — MotorConnect
+# Installation and Setup Guide — MotorConnect
 
-Todos los servicios corren localmente en contenedores Docker. Las únicas dependencias externas son Supabase (tablas de negocio) y OpenAI.
+All services run locally in Docker containers. The only external dependencies are Supabase (business tables) and OpenAI.
 
 ---
 
-## Requisitos
+## Requirements
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) instalado y corriendo
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running
 - Git
 
 ---
 
-## Pasos (computador nuevo)
+## Steps (new machine)
 
-### 1. Clonar el repositorio
+### 1. Clone the repository
 
 ```bash
-git clone <url-del-repo>
+git clone <repo-url>
 cd pegasusSolucionAuteco
 ```
 
-### 2. Configurar variables de entorno
+### 2. Configure environment variables
 
 ```bash
 cp .env.example .env
 ```
 
-Edita `.env` y completa estas variables (las demás vienen bien por defecto):
+Edit `.env` and fill in these variables (the rest have sane defaults):
 
-| Variable | Descripción |
+| Variable | Description |
 |---|---|
-| `SUPABASE_URL` | URL del proyecto Supabase |
-| `SUPABASE_SERVICE_KEY` | Clave `service_role` de Supabase |
-| `VITE_SUPABASE_URL` | La misma URL de Supabase (expuesta al browser) |
-| `VITE_SUPABASE_KEY` | Clave `anon/public` de Supabase |
-| `OPENAI_API_KEY` | Clave de API de OpenAI |
-| `JWT_SECRET` | String aleatorio, mínimo 32 caracteres |
-| `SESSION_SECRET` | String aleatorio, mínimo 32 caracteres |
+| `SUPABASE_URL` | Supabase project URL |
+| `SUPABASE_SERVICE_KEY` | Supabase `service_role` key |
+| `OPENAI_API_KEY` | OpenAI API key |
+| `JWT_SECRET` | Random string, at least 32 characters |
+| `SESSION_SECRET` | Random string, at least 32 characters |
 
-### 3. Levantar todos los servicios
+### 3. Start all services
 
 ```bash
 docker compose up -d --build
 ```
 
-Espera ~30 segundos a que los healthchecks pasen. Puedes verificar con:
+Wait ~30 seconds for healthchecks to pass, then verify:
 
 ```bash
 docker compose ps
 ```
 
-Todos los servicios deben estar en estado `healthy` antes de continuar.
+All services should report `healthy` before continuing.
 
-### 4. Agregar roles al enum de PostgreSQL (solo primera vez)
-
-```bash
-docker compose exec db psql -U motorconnect -d motorconnect_db -c "
-ALTER TYPE userrole ADD VALUE IF NOT EXISTS 'secretario';
-ALTER TYPE userrole ADD VALUE IF NOT EXISTS 'mecanico';
-"
-```
-
-### 5. Crear usuarios de prueba (solo primera vez)
+### 4. Create test users (first time only)
 
 ```bash
-# Usuario admin
+# Admin user
 docker compose exec backend python create_admin.py
 
-# Usuarios secretario y mecánico
+# Secretary and mechanic users
 docker compose exec backend python create_test_users.py
 ```
 
 ---
 
-## URLs de acceso
+## Access URLs
 
-| Servicio | URL |
+| Service | URL |
 |---|---|
 | Frontend | http://localhost:5173 |
 | BFF (Express) | http://localhost:3000 |
-| Backend FastAPI docs | http://localhost:8000/docs |
+| Backend FastAPI docs | http://localhost:8001/docs |
 
 ---
 
-## Credenciales de prueba
+## Test credentials
 
-| Rol | Email | Password |
+| Role | Email | Password |
 |---|---|---|
 | admin | admin@pegasus.com | `AdminPassword123!` |
 | secretario | secretario@pegasus.com | `TallerPassword123!` |
@@ -93,60 +82,60 @@ docker compose exec backend python create_test_users.py
 
 ---
 
-## Desarrollo del frontend fuera de Docker (opcional)
+## Frontend development outside Docker (optional)
 
-Si quieres hot-reload nativo de Vite sin reconstruir la imagen:
+For native Vite hot-reload without rebuilding the image:
 
 ```bash
-# Levantar solo la infraestructura (sin el contenedor web)
+# Start only the infrastructure (without the web container)
 docker compose up -d db mongodb redis qdrant backend bff
 
-# En otra terminal
+# In another terminal
 cd web
 npm install
 npm run dev
 ```
 
-La app estará en http://localhost:5174 (Vite elige el puerto disponible).
+The app will be available at http://localhost:5174 (Vite picks an available port).
 
 ---
 
-## Comandos útiles
+## Useful commands
 
 ```bash
-# Ver logs en tiempo real
+# View logs in real time
 docker compose logs -f
 
-# Ver logs de un servicio específico
+# View logs for a specific service
 docker compose logs -f backend
 docker compose logs -f bff
 
-# Reconstruir un solo servicio
+# Rebuild a single service
 docker compose up --build -d backend
 docker compose up --build -d bff
 
-# Detener todo
+# Stop everything
 docker compose down
 
-# Detener todo y borrar volúmenes (resetea las bases de datos)
+# Stop everything and remove volumes (resets the databases)
 docker compose down -v
 ```
 
 ---
 
-## Solución de problemas
+## Troubleshooting
 
-**El chat se queda cargando o da timeout:**
-MongoDB puede haber fallado al iniciar o tener un volumen corrupto.
+**Chat keeps loading or times out:**
+MongoDB may have failed to start or have a corrupted volume.
 ```bash
 docker compose up -d --force-recreate mongodb backend
 ```
 
-**Error 401 en todas las rutas del chat:**
-El BFF no está reenviando el JWT a FastAPI. Verifica que `JWT_SECRET` sea idéntico en `.env` para ambos servicios.
+**401 error on all chat routes:**
+The BFF isn't forwarding the JWT to FastAPI. Make sure `JWT_SECRET` is identical in `.env` for both services.
 
-**Vite arranca en el puerto 5174 en vez de 5173:**
-Ocurre cuando el frontend corre fuera de Docker y el puerto 5173 está ocupado. Actualiza `CORS_ORIGIN=http://localhost:5174` en `.env` y reinicia el BFF:
+**Vite starts on port 5174 instead of 5173:**
+This happens when the frontend runs outside Docker and port 5173 is taken. Update `CORS_ORIGIN=http://localhost:5174` in `.env` and restart the BFF:
 ```bash
 docker compose restart bff
 ```

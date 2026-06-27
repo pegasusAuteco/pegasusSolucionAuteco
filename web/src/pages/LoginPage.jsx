@@ -1,3 +1,12 @@
+/**
+ * Login page with email/password form and Zod validation.
+ *
+ * Features:
+ * - Form validation with Zod schemas
+ * - Offline detection with retry capability
+ * - Role-based redirect after login
+ * - Animated loading states
+ */
 import { useState } from 'react'
 import { z } from 'zod'
 import { Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react'
@@ -28,6 +37,7 @@ export default function LoginPage() {
     return <Navigate to={dest} replace />
   }
 
+  /** Sync form field value to state and clear its validation error. */
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
     if (errors[e.target.name]) {
@@ -35,6 +45,7 @@ export default function LoginPage() {
     }
   }
 
+  /** Validate form with Zod, check online status, and submit login. */
   const onSubmit = async (e, dataToSubmit) => {
     if (e) e.preventDefault()
 

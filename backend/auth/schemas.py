@@ -1,9 +1,24 @@
+"""
+Pydantic schemas for authentication request/response validation.
+
+Defines request models with field validators for registration and login,
+and response models for returning user data and JWT tokens.
+"""
 import re
 from pydantic import BaseModel, field_validator
 from typing import Optional
 
 
 class RegisterRequest(BaseModel):
+    """
+    Request schema for user registration.
+
+    Validates:
+    - nombre: non-empty string
+    - email: valid email format (lowercased)
+    - password: 8-12 chars, at least 1 uppercase, 1 lowercase, 1 digit
+    - accept_terms: must be True
+    """
     nombre: str
     email: str
     password: str
@@ -49,6 +64,7 @@ class RegisterRequest(BaseModel):
 
 
 class RegisterResponse(BaseModel):
+    """Response schema for successful user registration."""
     id: int
     nombre: str
     email: str
@@ -58,11 +74,13 @@ class RegisterResponse(BaseModel):
 
 
 class LoginRequest(BaseModel):
+    """Request schema for user login (email + password)."""
     email: str
     password: str
 
 
 class UserOut(BaseModel):
+    """Public user data schema (no sensitive fields)."""
     id: str
     email: str
     name: str
@@ -71,10 +89,12 @@ class UserOut(BaseModel):
 
 
 class LoginResponse(BaseModel):
+    """Response schema for successful login, containing JWT token and user data."""
     access_token: str
     token_type: str = "bearer"
     user: UserOut
 
 
 class ErrorResponse(BaseModel):
+    """Generic error response schema."""
     detail: str

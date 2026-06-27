@@ -1,3 +1,9 @@
+"""
+Analytics router for admin dashboard metrics.
+
+Aggregates real-time statistics from PostgreSQL (users) and MongoDB
+(conversations, messages) for the admin dashboard.
+"""
 from fastapi import APIRouter, Depends, Request, HTTPException
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,17 +15,25 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-@router.get("/admin", summary="Obtener métricas reales del administrador")
+@router.get("/admin", summary="Get real-time admin metrics")
 async def get_admin_stats(request: Request, db: AsyncSession = Depends(get_session)):
+    """
+    Returns aggregated admin dashboard metrics.
+
+    Metrics:
+    - total_users: Count from PostgreSQL users table
+    - total_conversations: Count from MongoDB conversation_logs
+    - total_messages: Sum of all message arrays across conversations
+    """
     try:
-        # 1. Total usuarios (Postgres)
+        # 1. Total users (PostgreSQL)
         stmt = select(func.count()).select_from(User)
         total_users = await db.scalar(stmt)
         
-        # 2. Base de datos MongoDB
+        # 2. MongoDB database
         mongo_db = request.app.state.mongo_db
         if mongo_db is None:
-            # Fallback en caso de que Mongo no esté disponible
+            # Fallback if MongoDB is not available
             return {
                 "total_users": total_users,
                 "total_conversations": 0,
@@ -28,10 +42,10 @@ async def get_admin_stats(request: Request, db: AsyncSession = Depends(get_sessi
         
         logs_collection = mongo_db["conversation_logs"]
         
-        # 3. Total conversaciones
+        # 3. Total conversations
         total_conversations = await logs_collection.count_documents({})
         
-        # 4. Total mensajes (Aggregation Pipeline)
+        # 4. Total messages (Aggregation Pipeline)
         pipeline = [
             {
                 "$project": {
@@ -56,5 +70,5 @@ async def get_admin_stats(request: Request, db: AsyncSession = Depends(get_sessi
         }
         
     except Exception as e:
-        logger.error(f"Error en admin stats: {e}")
+        logger.error(f"Error in admin stats: {e}")
         raise HTTPException(status_code=500, detail="Error al calcular métricas del administrador")

@@ -1,3 +1,10 @@
+/**
+ * Motorcycle inventory list component.
+ *
+ * Displays a searchable grid of motorcycles from both mock data and
+ * database manuals. Clicking a motorcycle sends a pre-filled query
+ * to the chat assistant about that model's technical specifications.
+ */
 import { useState } from 'react';
 import MotorcycleCard from './MotorcycleCard';
 import { Search } from 'lucide-react';
@@ -35,7 +42,7 @@ const MotorcycleList = () => {
     );
   };
 
-  // Solo mostramos en el inventario aquellos manuales de BD que tengan una imagen asignada
+  // Only show database manuals with an assigned image in the inventory
   const validDbManuals = (dbManuals || []).filter(manual => manual.image);
   const allMotos = [...MOCK_MOTOS, ...validDbManuals];
 

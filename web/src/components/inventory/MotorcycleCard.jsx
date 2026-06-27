@@ -1,3 +1,9 @@
+/**
+ * Motorcycle card component for the inventory grid.
+ *
+ * Displays motorcycle image, name, and displacement with hover effects.
+ * Clicking triggers a callback to query the chat about the motorcycle.
+ */
 export default function MotorcycleCard({ name, image, specs, onClick }) {
   return (
     <div

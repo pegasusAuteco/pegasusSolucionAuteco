@@ -1,3 +1,10 @@
+/**
+ * Compact mechanic queue component for the main layout's right panel.
+ *
+ * Shows pending repairs in a grid or list layout. When a repair is selected,
+ * displays a detailed repair panel with notes, parts management, and
+ * a "Finish Repair" action button.
+ */
 import { useState } from 'react';
 import { useWorkshop } from '@hooks/useWorkshop';
 import { Package, Plus, ArrowLeft, Wrench, CheckCircle, FileText, Trash2 } from 'lucide-react';
@@ -90,11 +97,18 @@ export default function CompactMechanicQueue({ isGrid = false }) {
   );
 }
 
+/** Individual motorcycle card with notes, parts management, and repair actions. */
 function CompactMotorcycleCard({ entry, onAddPart, onSelect, onUpdateNotes, onRemovePart, isActiveView }) {
   const [partName, setPartName] = useState('');
   const [partQty, setPartQty] = useState(1);
   const [notes, setNotes] = useState(entry.mechanicNotes || '');
 
+  /**
+   * Adds a spare part to the active workshop entry.
+   * Validates that the name is not empty and quantity is greater than 0,
+   * then resets the part form fields.
+   * @param {React.FormEvent<HTMLFormElement>} e - Form submit event.
+   */
   const handleAddPart = (e) => {
     e.preventDefault();
     if (partName.trim() && partQty > 0) {

@@ -1,3 +1,10 @@
+/**
+ * Motorcycle intake registration form for the workshop.
+ *
+ * Validates input with Zod schemas, checks for duplicate plates,
+ * and saves to Supabase via the BFF. Supports both create and edit modes.
+ * Merges hardcoded models with database manuals for the model dropdown.
+ */
 import { useState } from 'react';
 import { z } from 'zod';
 import { useWorkshop } from '@hooks/useWorkshop';
@@ -32,18 +39,25 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }) {
     queryFn: adminService.getCatalogManuals,
   });
 
+  /**
+   * Normalizes a model name by removing .pdf extension, catalog labels,
+   * hyphens/underscores, trailing dates, and collapsing extra spaces.
+   * Returns the result in uppercase.
+   * @param {string} name - Original model or filename string.
+   * @returns {string} Normalized name in uppercase.
+   */
   const normalizeModel = (name) => {
     let n = name;
     if (n.toLowerCase().endsWith('.pdf')) {
       n = n.slice(0, -4);
     }
-    // Elimina (catálogo), etc.
+    // Strip (catalog) etc.
     n = n.replace(/[-_]?\s*\(?cat[áa]logo\)?\s*/gi, '');
-    // Reemplaza guiones y guiones bajos por espacios
+    // Replace hyphens and underscores with spaces
     n = n.replace(/[-_]/g, ' ');
-    // Elimina fechas tipo 7 11 25 o 07 11 2025 al final (común en archivos subidos)
+    // Remove trailing dates like 7 11 25 or 07 11 2025 (common in uploaded files)
     n = n.replace(/\s+\d{1,2}\s+\d{1,2}\s+\d{2,4}$/, '');
-    // Elimina espacios múltiples y recorta
+    // Collapse multiple spaces and trim
     return n.replace(/\s+/g, ' ').trim().toUpperCase();
   };
 
@@ -68,6 +82,13 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }) {
   const { queue, registerEntry, updateEntry } = useWorkshop();
   const addToast = useToastStore((state) => state.addToast);
 
+  /**
+   * Handles input changes across form fields.
+   * For the 'phone' field, strips non-numeric characters and limits to 10 digits.
+   * For 'mileage', converts the value to a number. Clears validation errors
+   * for the edited field.
+   * @param {React.ChangeEvent<HTMLInputElement>} e - Input change event.
+   */
   const handleChange = (e) => {
     const { name, value } = e.target;
 
@@ -86,6 +107,14 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }) {
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
+  /**
+   * Handles form submission for the intake registration.
+   * Validates data with Zod, checks for duplicate plates in the local queue,
+   * and executes either create or update depending on the mode
+   * (presence of initialData). Shows success/error toasts and resets
+   * the form after creation.
+   * @param {React.FormEvent<HTMLFormElement>} e - Form submit event.
+   */
   const onSubmit = async (e) => {
     e.preventDefault();
 
@@ -102,7 +131,7 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }) {
 
     const data = result.data;
 
-    // Validación de placa duplicada en el taller (ignorando guiones)
+    // Duplicate plate validation in the workshop (ignoring hyphens)
     const normalizedNewPlate = data.plate.replace(/-/g, '').toUpperCase();
     const isDuplicate = queue.some(
       (q) => q.plate.replace(/-/g, '').toUpperCase() === normalizedNewPlate && (!initialData || q.id !== initialData.id)
@@ -146,7 +175,7 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }) {
         if (onSuccess) onSuccess();
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Error desconocido';
-        addToast('error', `❌ Error al actualizar: ${msg}`);
+        addToast('error', ` Error al actualizar: ${msg}`);
       } finally {
         setIsSubmitting(false);
       }
@@ -177,7 +206,7 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }) {
           observations: data.observations,
         });
 
-        addToast('success', '✅ Moto registrada y guardada en Supabase');
+        addToast('success', ' Moto registrada y guardada correctamente');
         setFormData({
           clientName: '', clientId: '', phone: '', email: '',
           entryDate: getLocalISODate(), model: '', plate: '', mileage: '', observations: '',
@@ -185,13 +214,19 @@ export default function ReceptionForm({ initialData, onSuccess, onCancel }) {
         setErrors({});
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Error desconocido';
-        addToast('error', `❌ Error al guardar en Supabase: ${msg}`);
+        addToast('error', ` Error al guardar correctamente: ${msg}`);
       } finally {
         setIsSubmitting(false);
       }
     }
   };
 
+  /**
+   * Generates Tailwind CSS classes for a form field, applying a red border
+   * when a validation error exists for that field.
+   * @param {string} field - Field name to check for validation errors.
+   * @returns {string} Space-separated Tailwind CSS class string.
+   */
   const inputClass = (field) =>
     `w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border ${
       errors[field] ? 'border-red-500' : 'border-gray-200 dark:border-gray-700'

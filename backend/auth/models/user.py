@@ -1,3 +1,9 @@
+"""
+User SQLAlchemy ORM model and role definitions.
+
+Defines the 'usuarios' table schema and the UserRole enum
+that controls access levels throughout the application.
+"""
 import enum
 from datetime import datetime, timezone
 
@@ -8,6 +14,7 @@ from database import Base
 
 
 class UserRole(str, enum.Enum):
+    """User role enumeration for access control."""
     EMPLOYEE = "employee"
     ADMIN = "admin"
     MECANICO = "mecanico"
@@ -15,6 +22,12 @@ class UserRole(str, enum.Enum):
 
 
 class User(Base):
+    """
+    User ORM model mapped to the 'usuarios' table.
+
+    Stores user credentials, profile information, and role assignment.
+    Passwords are stored as bcrypt hashes (never plaintext).
+    """
     __tablename__ = "usuarios"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)

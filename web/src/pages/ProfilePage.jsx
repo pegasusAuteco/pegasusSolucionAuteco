@@ -1,3 +1,9 @@
+/**
+ * User profile page with usage statistics.
+ *
+ * Displays user info (name, email, role) and conversation/message
+ * statistics from the analytics API.
+ */
 import { User, MessageSquare, Calendar } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { analyticsService } from '@services/api'

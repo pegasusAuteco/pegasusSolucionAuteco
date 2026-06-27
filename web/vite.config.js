@@ -1,3 +1,9 @@
+/**
+ * Vite configuration for the MotorConnect web application.
+ *
+ * Sets up path aliases for clean imports, development server proxy
+ * to the BFF backend, and production build settings.
+ */
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
@@ -17,7 +23,7 @@ export default defineConfig({
     },
   },
   server: {
-    // Puerto 5174 para desarrollo nativo con npm run dev (5173 lo usa el contenedor Docker)
+    // Port 5174 for native dev with npm run dev (5173 used by Docker container)
     port: 5174,
     proxy: {
       '/api': {

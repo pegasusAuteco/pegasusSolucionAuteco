@@ -1,5 +1,5 @@
 """
-Verifica y aplica supabase/schema_usuarios.sql en Supabase.
+Verify and apply supabase/schema_usuarios.sql to Supabase.
 """
 import os
 import sys
@@ -17,13 +17,15 @@ SQL_FILE = ROOT / "supabase" / "schema_usuarios.sql"
 
 
 def get_client() -> Client:
+    """Create and return a Supabase client using env credentials. Exits on missing config."""
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
-        print("Error: Faltan SUPABASE_URL o SUPABASE_SERVICE_KEY en .env")
+        print("Error: Missing SUPABASE_URL or SUPABASE_SERVICE_KEY in .env")
         sys.exit(1)
     return create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 
 def tabla_existe(supabase: Client) -> bool:
+    """Check if the 'usuarios' table exists by attempting a lightweight query."""
     try:
         supabase.table("usuarios").select("id").limit(1).execute()
         return True
@@ -35,17 +37,18 @@ def tabla_existe(supabase: Client) -> bool:
 
 
 def main():
+    """Verify the usuarios table; if missing, print the SQL schema for manual execution."""
     supabase = get_client()
-    print(f"Conectando a {SUPABASE_URL} ...")
+    print(f"Connecting to {SUPABASE_URL} ...")
 
     if tabla_existe(supabase):
         result = supabase.table("usuarios").select("id", count="exact").execute()
         total = result.count if result.count is not None else "?"
-        print(f"Tabla 'usuarios' verificada — {total} registro(s).")
+        print(f"Table 'usuarios' verified — {total} row(s).")
         return
 
-    print("Tabla 'usuarios' no encontrada.")
-    print("Ejecuta el siguiente SQL en el Supabase SQL Editor:\n")
+    print("Table 'usuarios' not found.")
+    print("Run the following SQL in the Supabase SQL Editor:\n")
     print("=" * 60)
     print(SQL_FILE.read_text(encoding="utf-8"))
     print("=" * 60)

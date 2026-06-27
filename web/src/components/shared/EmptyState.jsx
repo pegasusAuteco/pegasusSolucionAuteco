@@ -1,3 +1,8 @@
+/**
+ * Reusable empty state component for displaying when no data is available.
+ *
+ * Renders a centered icon, title, and description message.
+ */
 export default function EmptyState({ icon: Icon, title, description }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">

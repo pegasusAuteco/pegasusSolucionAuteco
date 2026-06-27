@@ -1,5 +1,10 @@
 """
-Herramientas (Tools) que el Agente Autónomo puede decidir utilizar.
+Tools that the autonomous Pegasus agent can decide to use.
+
+Each tool performs a specific function:
+- buscar_manuales_tecnicos: Search technical manuals for specs and maintenance
+- diagnosticar_falla_mecanica: Diagnose mechanical faults from symptoms
+- comparar_motos: Compare specifications of two motorcycles
 """
 import json
 from langchain_core.tools import tool
@@ -10,6 +15,7 @@ from openai import OpenAI
 _openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
 def _embed_text(text: str) -> list[float]:
+    """Generates an embedding vector for the given text using OpenAI's embedding model."""
     res = _openai_client.embeddings.create(
         model=EMBEDDING_MODEL,
         input=text.replace("\n", " ")
@@ -17,6 +23,13 @@ def _embed_text(text: str) -> list[float]:
     return res.data[0].embedding
 
 def _format_chunk(chunk: dict) -> str:
+    """
+    Formats a manual chunk into a readable string.
+
+    Handles both structured JSON data (new format with titulo, componentes,
+    procedimientos) and plain text fallback (legacy format).
+    Includes source reference and page number when available.
+    """
     parts = []
     fuente = chunk.get("fuente", "")
     pagina = chunk.get("pagina")
@@ -25,7 +38,7 @@ def _format_chunk(chunk: dict) -> str:
         ref_str = f"[{ref} – Pág. {pagina}]" if (ref and pagina) else f"[{ref}]"
         parts.append(ref_str)
 
-    # Obtenemos la data estructurada de la columna "texto" (Solución B - Problema 5)
+    # Extract structured data from the "texto" column (Solución B - Problema 5)
     texto_estructurado = chunk.get("texto")
     if isinstance(texto_estructurado, str):
         try:
@@ -66,7 +79,7 @@ def _format_chunk(chunk: dict) -> str:
                 
         usado_estructurado = True
 
-    # Si no había JSON estructurado (documentos viejos), hacemos fallback al texto plano
+    # Fallback to plain text for legacy documents without structured JSON
     if not usado_estructurado:
         datos = chunk.get("datos")
         texto_plano = ""
@@ -88,15 +101,17 @@ def _format_chunk(chunk: dict) -> str:
 @tool
 def buscar_manuales_tecnicos(consulta: str, motocicleta: str) -> str:
     """
-    ÚTIL PARA: Buscar especificaciones técnicas, capacidades de aceite, presiones de llantas, 
-    diagramas eléctricos, mantenimientos o cualquier información que esté en el manual del fabricante.
-    No la uses para solucionar averías si no te piden el manual.
+    Tool for searching technical manuals.
+
+    USEFUL FOR: Looking up technical specs, oil capacities, tire pressures,
+    electrical diagrams, maintenance procedures, or any manufacturer manual data.
+    Do not use this to solve breakdowns unless the user specifically asks for the manual.
     """
-    # Verificamos si la moto existe en la base de datos de manuales (Solución B)
+    # Check if the motorcycle exists in the manuals database
     if not check_model_exists(motocicleta, "manuales_chunks"):
         return f"No tengo registros de manuales técnicos para la moto: {motocicleta}."
 
-    # Enriquecemos el embedding asegurándonos de que la moto esté en la búsqueda
+    # Enrich the embedding by including the motorcycle name in the search
     busqueda_completa = f"{motocicleta} {consulta}".strip()
     embedding = _embed_text(busqueda_completa)
     
@@ -114,10 +129,12 @@ def buscar_manuales_tecnicos(consulta: str, motocicleta: str) -> str:
 @tool
 def diagnosticar_falla_mecanica(sintoma: str, motocicleta: str) -> str:
     """
-    ÚTIL PARA: Buscar el diagnóstico, posibles causas o pasos de reparación para una falla mecánica específica, 
-    ruido, problema o síntoma que reporte el usuario.
+    Tool for diagnosing mechanical faults.
+
+    USEFUL FOR: Looking up diagnosis, possible causes, or repair steps
+    for a specific mechanical fault, noise, issue, or symptom reported by the user.
     """
-    # Verificamos si la moto existe en la base de datos de fallas (Solución B)
+    # Check if the motorcycle exists in the faults database
     if not check_model_exists(motocicleta, "fallas_diagnostico"):
         return f"No tengo registros de fallas para la moto: {motocicleta}."
 
@@ -142,9 +159,12 @@ def diagnosticar_falla_mecanica(sintoma: str, motocicleta: str) -> str:
 @tool
 def comparar_motos(moto1: str, moto2: str) -> str:
     """
-    ÚTIL PARA: Comparar dos motocicletas distintas (ej. para saber cuál es mejor, diferencias en motor, etc.).
+    Tool for comparing two different motorcycles.
+
+    USEFUL FOR: Comparing two motorcycles (e.g. to know which is better,
+    differences in engine, specifications, etc.).
     """
-    # Buscamos información general (ej. ficha técnica) para la moto 1
+    # Search general info (e.g. spec sheet) for motorcycle 1
     if check_model_exists(moto1, "manuales_chunks"):
         emb1 = _embed_text(f"{moto1} ficha tecnica especificaciones")
         chunks1 = search_similar_chunks(emb1, motocicleta=moto1, top_k=3)
@@ -152,7 +172,7 @@ def comparar_motos(moto1: str, moto2: str) -> str:
     else:
         res1 = f"No hay información técnica disponible para {moto1}."
 
-    # Buscamos información general para la moto 2
+    # Search general info for motorcycle 2
     if check_model_exists(moto2, "manuales_chunks"):
         emb2 = _embed_text(f"{moto2} ficha tecnica especificaciones")
         chunks2 = search_similar_chunks(emb2, motocicleta=moto2, top_k=3)

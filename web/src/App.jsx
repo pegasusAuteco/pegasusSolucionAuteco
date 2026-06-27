@@ -1,3 +1,10 @@
+/**
+ * Root application component for MotorConnect.
+ *
+ * Sets up React Router with lazy-loaded pages, protected routes,
+ * and context providers for Chat and Workshop state management.
+ * Routes are role-based: secretarios go to /workshop, mecanicos/admins to /chat.
+ */
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
 import Layout from '@components/layout/Layout'
@@ -13,6 +20,7 @@ const HistoryPage  = lazy(() => import('@pages/HistoryPage'))
 const ProfilePage  = lazy(() => import('@pages/ProfilePage'))
 const WorkshopPage = lazy(() => import('@pages/WorkshopPage'))
 
+/** Redirects users to their role-appropriate home page. */
 function RoleRedirect() {
   const user = useAuthStore((s) => s.user)
   if (!user) return <Navigate to="/login" replace />

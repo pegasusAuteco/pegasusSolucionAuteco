@@ -1,3 +1,12 @@
+/**
+ * Fetch wrapper with automatic timeout, JSON parsing, and auth handling.
+ *
+ * Features:
+ * - Configurable request timeout (default 15s)
+ * - Auto-redirect to /login on 401 responses
+ * - JSON response parsing with error extraction
+ * - FormData support without Content-Type header override
+ */
 export async function apiFetch(url, options = {}) {
   const { timeout = 15000, ...fetchOptions } = options;
 

@@ -1,3 +1,10 @@
+/**
+ * BFF (Backend-for-Frontend) server entry point.
+ *
+ * Sets up Express with Redis-backed sessions, CORS, security headers,
+ * and mounts all route modules. Also initializes the WebSocket proxy
+ * for real-time chat streaming.
+ */
 import express from 'express'
 import helmet from 'helmet'
 import cors from 'cors'
@@ -12,12 +19,12 @@ import historyRoutes from './routes/history.routes.js'
 import proxyRoutes from './routes/proxy.routes.js'
 import { setupChatWsProxy } from './websocket/chatWsProxy.js'
 
-// ── Redis ──────────────────────────────────────────────────────────────────
+// ── Redis client ──────────────────────────────────────────────────────────
 const redisClient = createClient({ url: config.REDIS_URL })
 redisClient.on('error', (err) => console.error('[redis] Error:', err))
 await redisClient.connect()
 
-// ── App ────────────────────────────────────────────────────────────────────
+// ── Express app ───────────────────────────────────────────────────────────
 const app = express()
 
 app.use(helmet())
@@ -39,7 +46,7 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }))
 app.use(pinoHttp())
 
-// ── Sesiones ───────────────────────────────────────────────────────────────
+// ── Sessions (Redis-backed) ───────────────────────────────────────────────
 app.use(session({
   store: new RedisStore({ client: redisClient }),
   secret: config.SESSION_SECRET,
@@ -48,11 +55,11 @@ app.use(session({
   cookie: {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    maxAge: 1000 * 60 * 60 * 24, // 24 h
+    maxAge: 1000 * 60 * 60 * 24, // 24 hours
   },
 }))
 
-// ── Rutas ──────────────────────────────────────────────────────────────────
+// ── Routes ────────────────────────────────────────────────────────────────
 app.use('/api/auth',     authRoutes)
 app.use('/api/workshop', workshopRoutes)
 app.use('/api/history',  historyRoutes)
@@ -62,19 +69,19 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok' })
 })
 
-// ── Error handler global ───────────────────────────────────────────────────
+// ── Global error handler ──────────────────────────────────────────────────
 app.use((err, req, res, _next) => {
   console.error('[error]', err.message)
   res.status(err.status || 500).json({
     error: process.env.NODE_ENV === 'production'
-      ? 'Error interno del servidor'
+      ? 'Internal server error'
       : err.message,
   })
 })
 
-// ── Inicio ─────────────────────────────────────────────────────────────────
+// ── Start server ──────────────────────────────────────────────────────────
 export const server = app.listen(config.PORT, () => {
-  console.log(`[bff] Servidor corriendo en http://localhost:${config.PORT}`)
+  console.log(`[bff] Server running on http://localhost:${config.PORT}`)
 })
 
 setupChatWsProxy(server, redisClient)

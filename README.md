@@ -1,103 +1,42 @@
 # MotorConnect — Pegasus
 
-Plataforma web para talleres de motocicletas **Auteco Mobility**. Centraliza la recepción de motos, la gestión de la cola del mecánico y un asistente técnico con IA que responde preguntas sobre manuales oficiales en tiempo real.
+Web platform for **Auteco Mobility** motorcycle workshops. Centralizes motorcycle intake, the mechanic's work queue, and an AI technical assistant that answers questions about official manuals in real time.
 
 ---
 
-## Características principales
+| Layer | Technology | Provider |
+|------|-----------|-----------|
+| Frontend | React 18 + JavaScript + Vite | — |
+| BFF | Express (Node 20) | — |
+| State | Zustand | — |
+| AI Backend | FastAPI (Python 3.11) | — |
+| Auth/chat database | PostgreSQL | Supabase (cloud) |
+| Vector store | pgvector | Supabase (cloud) |
+| Conversation logs | MongoDB | Atlas (cloud) |
+| Active sessions | Redis | Upstash (cloud) |
+| LLM + Embeddings | GPT-4o-mini + text-embedding-3-small | OpenAI |
+| Voice transcription | Whisper (via Groq) | Groq — optional |
 
-- **Asistente Pegasus:** chatbot con streaming token a token, búsqueda semántica sobre manuales técnicos (RAG) y diagnóstico de fallas
-- **Recepción de motos:** formulario digital de ingreso con validación, asignación a mecánico y seguimiento de estado
-- **Panel del mecánico:** cola de trabajo sin datos PII del cliente
-- **Autenticación por roles:** mecánico, secretario y admin con redirección automática por rol
+## Key features
 
----
-
-## Requisitos previos
-
-| Herramienta | Versión mínima |
-|---|---|
-| Docker + Docker Compose | 24+ |
-| Node.js (solo para dev del frontend fuera de Docker) | 20 LTS |
-| Python | 3.11 (incluido en la imagen Docker) |
-
----
-
-## Levantar el proyecto
-
-### 1. Clonar el repositorio
-
-```bash
-git clone <url-del-repo>
-cd pegasusSolucionAuteco
-```
-
-### 2. Configurar variables de entorno
-
-```bash
-cp .env.example .env
-```
-
-Edita `.env` y completa las variables requeridas:
-
-| Variable | Descripción |
-|---|---|
-| `OPENAI_API_KEY` | Clave de API de OpenAI |
-| `SUPABASE_URL` | URL del proyecto Supabase |
-| `SUPABASE_SERVICE_KEY` | Clave `service_role` de Supabase |
-| `JWT_SECRET` | Secreto para firmar tokens (mín. 32 chars) |
-| `SESSION_SECRET` | Secreto para sesiones del BFF (mín. 32 chars) |
-| `MONGO_URI` | URI de conexión a MongoDB |
-| `QDRANT_API_KEY` | Clave de Qdrant |
-
-### 3. Levantar todos los servicios
-
-```bash
-docker compose up
-```
-
-Servicios disponibles:
-
-| Servicio | URL |
-|---|---|
-| Frontend | http://localhost:5174 |
-| BFF (API) | http://localhost:3000 |
-| Backend FastAPI docs | http://localhost:8000/docs |
-
-### 4. (Primera vez) Crear usuarios de prueba
-
-```bash
-# Agregar los roles al enum de PostgreSQL
-docker compose exec db psql -U motorconnect -d motorconnect_db -c "
-  ALTER TYPE userrole ADD VALUE IF NOT EXISTS 'secretario';
-  ALTER TYPE userrole ADD VALUE IF NOT EXISTS 'mecanico';
-"
-
-# Crear usuarios
-docker compose exec backend python create_test_users.py
-```
-
-### 5. Desarrollo del frontend fuera de Docker (opcional)
-
-```bash
-cd web
-npm install
-npm run dev
-```
+- **Pegasus assistant:** token-by-token streaming chatbot, semantic search over technical manuals (RAG), and failure diagnosis
+- **Motorcycle intake:** digital intake form with validation, mechanic assignment, and status tracking
+- **Mechanic dashboard:** work queue with no customer PII
+- **Role-based auth:** mechanic, secretary, and admin with automatic role-based redirection
+- **Voice input** — audio recording with transcription via Groq Whisper
+- **Conversation history** per user
+- **Admin panel** with global metrics
+- **Dark mode** across the whole interface
 
 ---
 
-## Credenciales de prueba
+## Getting started
 
-| Rol | Email | Password | Acceso |
-|---|---|---|---|
-| admin | admin@pegasus.com | *(ver `.env`)* | Todo |
-| secretario | secretario@pegasus.com | `TallerPassword123!` | Taller + chat |
-| mecanico | mecanico@pegasus.com | `TallerPassword123!` | Cola + chat |
+See **[SETUP.md](./SETUP.md)** for installation requirements, environment variables, Docker setup, test credentials, and troubleshooting.
 
 ---
 
-## Estructura de carpetas
+## Folder structure
 
 ```
 pegasusSolucionAuteco/
@@ -106,15 +45,18 @@ pegasusSolucionAuteco/
 │       ├── middleware/         # requireAuth, rateLimiter
 │       ├── routes/             # auth, workshop, history, proxy
 │       ├── services/           # authService, workshopService, supabaseClient
-│       └── websocket/          # chatWsProxy — bridge WebSocket BFF↔FastAPI
-├── backend/                    # Backend IA — FastAPI + Python
-│   ├── auth/                   # JWT, roles, login, registro
-│   ├── chat/                   # Conversaciones + endpoint WebSocket
+│       └── websocket/          # chatWsProxy — WebSocket bridge BFF↔FastAPI
+├── backend/                    # AI Backend — FastAPI + Python
+│   ├── auth/                   # JWT, roles, login, register
+│   ├── chat/                   # Conversations + WebSocket endpoint
 │   ├── rag/
-│   │   ├── retrieval/          # Búsqueda semántica en Qdrant
+│   │   ├── retrieval/          # Semantic search on Supabase pgvector
 │   │   └── generation/         # Prompt + OpenAI streaming
-│   ├── logs/                   # Historial en MongoDB
-│   └── create_test_users.py    # Script para crear usuarios de prueba
+│   ├── voice/                  # Transcription/TTS (Groq Whisper)
+│   ├── admin/                  # Admin and manuals endpoints
+│   ├── analytics/              # Usage statistics
+│   ├── logs/                   # History in Redis (hot) → MongoDB (cold)
+│   └── create_test_users.py    # Script to create test users
 ├── web/                        # Frontend — React + Vite (JS)
 │   └── src/
 │       ├── components/         # chat, workshop, layout, shared
@@ -122,18 +64,30 @@ pegasusSolucionAuteco/
 │       ├── pages/              # Login, Chat, Workshop, Mechanic, Admin
 │       ├── services/           # api.js (HTTP client)
 │       ├── store/              # authStore, toastStore (Zustand)
-│       └── lib/                # fetch.js (wrapper con timeout y error handling)
+│       └── lib/                # fetch.js (wrapper with timeout and error handling)
 ├── supabase/
-│   └── schema.sql              # Schema completo idempotente
+│   └── schema.sql              # Full idempotent schema
 ├── docs/
-│   └── ARQUITECTURA.md         # Arquitectura detallada, flujos y decisiones técnicas
+│   └── ARQUITECTURA.md         # Detailed architecture, flows, and technical decisions
 ├── docker-compose.yaml
 └── .env.example
 ```
 
----
+## RAG flow
 
-## Documentación
+```
+User → POST /chat/conversations/{id}/messages
+    ↓
+1. Embed the query with text-embedding-3-small (OpenAI)
+2. Semantic search on Supabase pgvector (top 5 chunks)
+3. Fetch history: Redis (hot) or MongoDB (cold)
+4. Build prompt: system + last 10 messages + context + query
+5. Call GPT-4o-mini → answer
+    ↓
+Store in Redis (24h TTL) + MongoDB (1 year TTL)
+```
 
-- **[docs/ARQUITECTURA.md](./docs/ARQUITECTURA.md)** — Arquitectura del sistema, flujos de autenticación y chat, decisiones técnicas y deuda conocida
-- **[CLAUDE.md](./CLAUDE.md)** — Guía interna de Claude: fases de migración, decisiones y pendientes *(no incluido en el repo remoto)*
+## Documentation
+
+- **[docs/ARQUITECTURA.md](./docs/ARQUITECTURA.md)** — System architecture, auth and chat flows, technical decisions, and known debt
+- **[SETUP.md](./SETUP.md)** — Step-by-step installation guide, troubleshooting, and useful commands

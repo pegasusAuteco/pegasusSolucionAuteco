@@ -1,3 +1,8 @@
+/**
+ * Zustand store for toast notification management.
+ *
+ * Maintains a queue of up to 3 toasts with auto-removal after a configurable duration.
+ */
 import { create } from 'zustand'
 
 export const useToastStore = create((set, get) => ({

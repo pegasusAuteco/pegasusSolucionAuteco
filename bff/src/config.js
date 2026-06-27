@@ -1,3 +1,9 @@
+/**
+ * Centralized configuration module for the BFF.
+ *
+ * Uses Zod to validate all required environment variables at startup.
+ * Exports a typed config object that can be imported throughout the app.
+ */
 import 'dotenv/config'
 import { z } from 'zod'
 
@@ -16,7 +22,7 @@ const parsed = schema.safeParse({
 })
 
 if (!parsed.success) {
-  console.error('[config] Variables de entorno inválidas:')
+  console.error('[config] Invalid environment variables:')
   console.error(parsed.error.flatten().fieldErrors)
   process.exit(1)
 }

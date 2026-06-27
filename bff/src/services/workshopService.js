@@ -1,5 +1,16 @@
+/**
+ * Workshop management service for Supabase database operations.
+ *
+ * Handles CRUD operations for motorcycle intake records (ingresos_taller)
+ * and WhatsApp notification integration via n8n webhooks.
+ */
 import supabase from './supabaseClient.js'
 
+/**
+ * Retrieves all workshop intake records ordered by intake date (newest first).
+ *
+ * @returns {Promise<Array>} List of intake records
+ */
 export async function getMotorcycles() {
   const { data, error } = await supabase
     .from('ingresos_taller')
@@ -9,7 +20,14 @@ export async function getMotorcycles() {
   return data
 }
 
-// Usa la vista vista_mecanicos_ingresos (sin PII: sin cliente, cédula, correo).
+/**
+ * Retrieves the mechanic queue from the vista_mecanicos_ingresos view.
+ *
+ * Uses a database view that excludes PII (no client name, ID, or email).
+ * Only returns records with status 'en_cola' (in queue).
+ *
+ * @returns {Promise<Array>} List of queued intake records
+ */
 export async function getMechanicQueue() {
   const { data, error } = await supabase
     .from('vista_mecanicos_ingresos')
@@ -19,6 +37,12 @@ export async function getMechanicQueue() {
   return data
 }
 
+/**
+ * Creates a new workshop intake record.
+ *
+ * @param {object} data - Intake data (cliente, documento_identidad, marca_modelo, placa, kilometraje, etc.)
+ * @returns {Promise<object>} The created record
+ */
 export async function createIngreso(data) {
   const { data: row, error } = await supabase
     .from('ingresos_taller')
@@ -29,7 +53,15 @@ export async function createIngreso(data) {
   return row
 }
 
-// Requiere columna `estado VARCHAR(50)` en ingresos_taller (ver schema_usuarios.sql Camino 1).
+/**
+ * Updates the status of a motorcycle intake record.
+ *
+ * Requires the 'estado VARCHAR(50)' column in ingresos_taller table.
+ *
+ * @param {string} id - Record ID
+ * @param {string} status - New status value
+ * @returns {Promise<object>} The updated record
+ */
 export async function updateMotorcycleStatus(id, status) {
   const { data, error } = await supabase
     .from('ingresos_taller')
@@ -41,10 +73,23 @@ export async function updateMotorcycleStatus(id, status) {
   return data
 }
 
+/**
+ * Marks a motorcycle intake as completed.
+ *
+ * @param {string} id - Record ID
+ * @returns {Promise<object>} The updated record with status 'completada'
+ */
 export async function completarMoto(id) {
   return updateMotorcycleStatus(id, 'completada')
 }
 
+/**
+ * Updates a workshop intake record with arbitrary fields.
+ *
+ * @param {string} id - Record ID
+ * @param {object} data - Fields to update
+ * @returns {Promise<object>} The updated record
+ */
 export async function updateIngreso(id, data) {
   const { data: row, error } = await supabase
     .from('ingresos_taller')
@@ -56,6 +101,11 @@ export async function updateIngreso(id, data) {
   return row
 }
 
+/**
+ * Deletes a workshop intake record.
+ *
+ * @param {string} id - Record ID
+ */
 export async function deleteIngreso(id) {
   const { error } = await supabase
     .from('ingresos_taller')
@@ -64,8 +114,18 @@ export async function deleteIngreso(id) {
   if (error) throw error
 }
 
+/**
+ * Sends a WhatsApp notification via n8n webhook when a motorcycle is ready.
+ *
+ * Fetches the intake record, builds a structured payload with customer,
+ * vehicle, and service details, and posts it to the configured n8n webhook.
+ *
+ * @param {string} id - Intake record ID
+ * @param {Array} [parts=[]] - List of parts used in the service
+ * @returns {Promise<{success: boolean, payload?: object, message?: string}>}
+ */
 export async function notifyWhatsApp(id, parts = []) {
-  // 1. Obtener la info completa del ingreso
+  // 1. Fetch the complete intake record
   const { data: ingreso, error } = await supabase
     .from('ingresos_taller')
     .select('*')
@@ -75,7 +135,7 @@ export async function notifyWhatsApp(id, parts = []) {
   if (error) throw error
   if (!ingreso) throw new Error('Ingreso no encontrado')
 
-  // 2. Construir el payload para n8n
+  // 2. Build the n8n webhook payload
   const payload = {
     event: 'motorcycle_ready',
     customer: {
@@ -98,11 +158,11 @@ export async function notifyWhatsApp(id, parts = []) {
 
   const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL
   if (!n8nWebhookUrl) {
-    console.warn('N8N_WEBHOOK_URL no está configurada, ignorando envío')
+    console.warn('N8N_WEBHOOK_URL not configured, skipping send')
     return { success: false, message: 'Webhook URL no configurada' }
   }
 
-  // 3. Enviar a n8n
+  // 3. Send to n8n
   const response = await fetch(n8nWebhookUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

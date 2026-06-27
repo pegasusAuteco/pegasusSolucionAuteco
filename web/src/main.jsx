@@ -1,3 +1,9 @@
+/**
+ * Application entry point for the MotorConnect React app.
+ *
+ * Initializes React Query client, applies saved theme preference,
+ * and renders the root App component inside StrictMode.
+ */
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'

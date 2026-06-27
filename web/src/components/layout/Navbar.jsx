@@ -1,3 +1,9 @@
+/**
+ * Navigation bar component (legacy - used in simpler layouts).
+ *
+ * Renders a bottom tab bar on mobile and a sidebar on desktop.
+ * Includes links to Chat, History, Profile, and Admin (if admin role).
+ */
 import { Link, useLocation } from 'react-router-dom'
 import { MessageSquare, History, User, LogOut, Shield } from 'lucide-react'
 import { useAuthStore } from '@store/authStore'

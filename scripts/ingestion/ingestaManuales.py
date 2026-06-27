@@ -1,3 +1,10 @@
+"""
+PDF manual ingestion script.
+
+Processes motorcycle technical manuals (PDFs), extracts content via GPT-4o-mini
+vision, generates embeddings, and stores chunks in Supabase pgvector for
+chatbot retrieval.
+"""
 import os
 import base64
 import io
@@ -17,10 +24,11 @@ supabase_url = os.getenv("SUPABASE_URL")
 supabase_key = os.getenv("SUPABASE_SERVICE_KEY")
 
 if not supabase_url or not supabase_key:
-    print("ADVERTENCIA: Faltan SUPABASE_URL o SUPABASE_SERVICE_KEY en tu archivo .env")
+    print("WARNING: Missing SUPABASE_URL or SUPABASE_SERVICE_KEY in .env")
 
 
 def imagen_a_base64(pagina: int, rutaPDF: str) -> str:
+    """Render a PDF page to a base64-encoded JPEG string."""
     doc = fitz.open(rutaPDF)
     page = doc.load_page(pagina - 1)
     pix = page.get_pixmap(dpi=100)
@@ -29,6 +37,7 @@ def imagen_a_base64(pagina: int, rutaPDF: str) -> str:
 
 
 def extraer_datos_ia(imagen_base64: str, prompt: str) -> dict:
+    """Send an image to GPT-4o-mini and return the parsed JSON response with retry on rate limits."""
     import time
     intentos = 0
     while intentos < 6:
@@ -54,15 +63,16 @@ def extraer_datos_ia(imagen_base64: str, prompt: str) -> dict:
         except Exception as e:
             if "429" in str(e) or "rate_limit" in str(e).lower():
                 espera = (intentos + 1) * 15
-                print(f"  Rate Limit de OpenAI. Esperando {espera} seg...")
+                print(f"  OpenAI Rate Limit. Waiting {espera} sec...")
                 time.sleep(espera)
                 intentos += 1
             else:
                 raise e
-    raise Exception("Se superaron los intentos máximos por Rate Limit de OpenAI.")
+    raise Exception("Max OpenAI rate limit retries exceeded.")
 
 
 def generar_embedding(texto: str) -> list[float]:
+    """Generate a text embedding using OpenAI's text-embedding-3-small model with retry on rate limits."""
     import time
     intentos = 0
     while intentos < 6:
@@ -76,12 +86,13 @@ def generar_embedding(texto: str) -> list[float]:
                 intentos += 1
             else:
                 raise e
-    raise Exception("Se superaron los intentos máximos para Embeddings.")
+    raise Exception("Max embedding retries exceeded.")
 
 
 def guardar_en_vectordb(chunk: dict, embedding: list[float]):
+    """Store a text chunk with its embedding vector in Supabase pgvector."""
     if not supabase_url or not supabase_key:
-        print(f"[stub] Página {chunk['metadata']['pagina']} lista — embedding dim: {len(embedding)}")
+        print(f"[stub] Page {chunk['metadata']['pagina']} ready — embedding dim: {len(embedding)}")
         return
 
     try:
@@ -102,9 +113,9 @@ def guardar_en_vectordb(chunk: dict, embedding: list[float]):
         with httpx.Client() as client:
             res = client.post(endpoint, headers=headers, json=data)
             res.raise_for_status()
-        print(f"Página {chunk['metadata']['pagina']} guardada en Supabase.")
+        print(f"Page {chunk['metadata']['pagina']} saved to Supabase.")
     except Exception as e:
-        print(f"Error al guardar página {chunk['metadata']['pagina']}: {e}")
+        print(f"Error saving page {chunk['metadata']['pagina']}: {e}")
 
 
 PROMPT = """
@@ -118,9 +129,10 @@ Si alguna clave no aplica, usa null.
 
 
 def procesar_pdf_completo(rutaPDF: str):
+    """Process all pages of a PDF: extract content via AI, embed, and store in vector DB."""
     doc = fitz.open(rutaPDF)
     total = len(doc)
-    print(f"Procesando {total} páginas: {rutaPDF}")
+    print(f"Processing {total} pages: {rutaPDF}")
     for pagina in range(1, total + 1):
         b64 = imagen_a_base64(pagina, rutaPDF)
         datos = extraer_datos_ia(b64, PROMPT)
@@ -128,21 +140,22 @@ def procesar_pdf_completo(rutaPDF: str):
         chunk = {"texto": texto, "metadata": {"fuente": os.path.basename(rutaPDF), "pagina": pagina, "datos": datos}}
         embedding = generar_embedding(chunk["texto"])
         guardar_en_vectordb(chunk, embedding)
-    print("Listo.")
+    print("Done.")
 
 
 def procesar_carpeta(carpeta_path: str):
+    """Find all PDFs in a folder and process each one."""
     pdfs = glob.glob(os.path.join(carpeta_path, "*.pdf"))
     if not pdfs:
-        print(f"No se encontraron PDFs en: {carpeta_path}")
+        print(f"No PDFs found in: {carpeta_path}")
         return
-    print(f"Se encontraron {len(pdfs)} manuales. Comenzando ingesta...\n")
+    print(f"Found {len(pdfs)} manuals. Starting ingestion...\n")
     for pdf in pdfs:
-        print(f"\n--- Procesando: {os.path.basename(pdf)} ---")
+        print(f"\n--- Processing: {os.path.basename(pdf)} ---")
         try:
             procesar_pdf_completo(pdf)
         except Exception as e:
-            print(f"Error procesando {os.path.basename(pdf)}: {e}")
+            print(f"Error processing {os.path.basename(pdf)}: {e}")
 
 
 if __name__ == "__main__":

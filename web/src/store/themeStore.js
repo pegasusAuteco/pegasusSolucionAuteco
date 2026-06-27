@@ -1,3 +1,9 @@
+/**
+ * Zustand store for light/dark theme toggling.
+ *
+ * Persists theme preference in localStorage and toggles the 'dark' class
+ * on the document root element for Tailwind dark mode support.
+ */
 import { create } from 'zustand';
 
 export const useThemeStore = create((set) => ({

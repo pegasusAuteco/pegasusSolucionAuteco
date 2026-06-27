@@ -1,3 +1,9 @@
+/**
+ * Service invoice modal for completed repairs.
+ *
+ * Generates a formatted invoice with labor costs, parts, IVA (19%),
+ * and total. Includes print button (placeholder) and close action.
+ */
 import { FileText, X, Printer, CheckCircle } from 'lucide-react';
 
 export default function InvoiceModal({ entry, onClose }) {
@@ -9,6 +15,11 @@ export default function InvoiceModal({ entry, onClose }) {
   const iva = totalCost * 0.19;
   const grandTotal = totalCost + iva;
 
+  /**
+   * Formats a numeric value as Colombian peso currency (COP).
+   * @param {number} value - Numeric value to format.
+   * @returns {string} Currency-formatted string, e.g. "$50.000".
+   */
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(value);
   };

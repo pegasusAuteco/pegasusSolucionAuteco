@@ -1,11 +1,17 @@
+"""
+Response generation module using the LangChain agent executor.
+
+Provides synchronous and streaming answer generation with voice mode support.
+The voice mode adds a safety instruction to handle transcription hallucinations.
+"""
 import asyncio
 from langchain_core.messages import AIMessage, HumanMessage
 from rag.core import pegasus_agent_executor
 
-# Instrucción interna que se antepone SOLO a consultas de voz (voice_mode=True).
-# Sirve de red de seguridad para alucinaciones de transcripción que no son
-# consultas de taller (ej. frases de un video de fondo) que la detección por
-# lista/confianza no atrapó: en ese caso Pegasus pide repetir en vez de inventar.
+# Internal instruction prepended ONLY to voice queries (voice_mode=True).
+# Acts as a safety net against transcription hallucinations that are not
+# workshop queries (e.g. background video phrases) the list/confidence
+# detection didn't catch: in that case Pegasus asks to repeat instead of inventing.
 VOICE_MODE_INSTRUCTION = (
     "[INSTRUCCIÓN INTERNA – NO la menciones al usuario] "
     "Esta consulta proviene de transcripción de voz y puede contener "
@@ -21,6 +27,11 @@ VOICE_MODE_INSTRUCTION = (
 )
 
 def _map_history(history: list[dict] = None):
+    """
+    Converts message history from dict format to LangChain message objects.
+
+    Maps 'user' role to HumanMessage and 'assistant' role to AIMessage.
+    """
     lc_history = []
     if history:
         for msg in history:
@@ -32,15 +43,19 @@ def _map_history(history: list[dict] = None):
 
 def generate_answer(query: str, context_chunks: list[str], history: list[dict] = None, voice_mode: bool = False) -> str:
     """
-    Función puente (Wrapper) para mantener la compatibilidad con el código viejo (voice/router.py).
-    La lógica de procesamiento ahora se delega completamente a LangChain.
-    El parámetro context_chunks se ignora porque LangChain busca su propio contexto usando herramientas.
+    Wrapper function for backward compatibility with voice/router.py.
+
+    The actual processing logic is fully delegated to LangChain.
+    The context_chunks parameter is ignored because LangChain searches
+    for its own context using tools.
+
+    In voice_mode, a safety instruction is prepended to handle transcription errors.
     """
     lc_history = _map_history(history)
 
-    # Solo en modo voz: anteponer la instrucción de "pedir repetir si no es
-    # consulta de taller". Guard: si la query ya es una instrucción interna
-    # (p.ej. SILENCIO_QUERY cuando is_silent), NO duplicar la instrucción.
+    # Voice mode only: prepend the "ask to repeat if not a workshop query" instruction.
+    # Guard: if the query is already an internal instruction (e.g. SILENCIO_QUERY when is_silent),
+    # don't duplicate the instruction.
     if voice_mode and not query.startswith("[INSTRUCCIÓN INTERNA"):
         query = f"{VOICE_MODE_INSTRUCTION}\n\nConsulta del usuario: {query}"
 
@@ -50,12 +65,14 @@ def generate_answer(query: str, context_chunks: list[str], history: list[dict] =
         )
         return response["output"]
     except Exception as e:
-        print(f"Error en LangChain Agent (sync): {e}")
+        print(f"Error in LangChain Agent (sync): {e}")
         return "Lo siento, tuve un problema interno procesando tu solicitud."
 
 async def generate_answer_stream(query: str, context_chunks: list[str], history: list[dict] = None):
     """
-    Función puente (Wrapper) para mantener la compatibilidad con el código viejo de chat en vivo (chat/router.py).
+    Async generator wrapper for backward compatibility with live chat (chat/router.py).
+
+    Yields text deltas as they arrive from the LangChain agent executor.
     """
     lc_history = _map_history(history)
     
@@ -70,5 +87,5 @@ async def generate_answer_stream(query: str, context_chunks: list[str], history:
                 if delta and isinstance(delta, str):
                     yield delta
     except Exception as e:
-        print(f"Error en LangChain Agent (stream): {e}")
+        print(f"Error in LangChain Agent (stream): {e}")
         yield " Error procesando la solicitud."

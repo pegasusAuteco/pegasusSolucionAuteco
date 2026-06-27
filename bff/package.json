@@ -2,7 +2,7 @@
   "name": "motorconnect-bff",
   "version": "0.1.0",
   "type": "module",
-  "description": "Backend-for-Frontend: auth, sesiones, proxy a Supabase y FastAPI",
+  "description": "Backend-for-Frontend: auth, sessions, proxy to Supabase and FastAPI",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",

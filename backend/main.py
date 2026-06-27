@@ -1,6 +1,10 @@
 """
-Punto de entrada principal del backend FastAPI.
-Registra todos los routers y configura middleware.
+Main entry point for the Pegasus FastAPI backend.
+
+This module initializes the FastAPI application, configures middleware,
+registers all API routers, and manages the application lifespan (startup/shutdown).
+The API serves as an AI-powered technical support agent for Auteco motorcycles,
+using RAG (Retrieval Augmented Generation) with LangChain and vector search.
 """
 from contextlib import asynccontextmanager
 
@@ -22,6 +26,19 @@ from admin.manuals_router import router as manuals_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """
+    Application lifespan context manager.
+
+    On startup:
+    - Creates all database tables if they don't exist.
+    - Initializes Redis and MongoDB connections for the logging service.
+    - Stores log_service and mongo_db on app.state for dependency injection.
+
+    On shutdown:
+    - Disposes the SQLAlchemy engine and closes Redis connection.
+
+    If Redis/MongoDB are unavailable, logging is disabled gracefully.
+    """
     from auth.models import User
     from models.audio_message import AudioMessage
     from logs.connections import get_redis, get_mongo_db
@@ -38,7 +55,7 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         import logging
         logging.getLogger(__name__).warning(
-            f"⚠️  Redis/MongoDB no disponibles — logs desactivados: {e}"
+            f"Redis/MongoDB unavailable — logging disabled: {e}"
         )
         app.state.log_service = None
         app.state.mongo_db = None
@@ -50,19 +67,20 @@ async def lifespan(app: FastAPI):
     if redis:
         await redis.aclose()
 
-# Validar configuración al arrancar
+# Validate critical environment variables at startup
 validate_config()
 
 app = FastAPI(
     title="Pegasus API",
-    description="Agente IA con RAG para soporte técnico de motos Auteco",
+    description="AI agent with RAG for Auteco motorcycle technical support",
     version="1.0.0",
     lifespan=lifespan,
 )
 
+# CORS middleware — in production, replace "*" with the specific frontend domain
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # En producción: especifica el dominio del frontend
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -71,6 +89,12 @@ app.add_middleware(
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """
+    Custom handler for request validation errors.
+
+    Normalizes exception context values to strings to ensure JSON serialization,
+    then returns a 400 response with the cleaned error details.
+    """
     cleaned_errors = []
     for error in exc.errors():
         normalized_error = dict(error)
@@ -84,7 +108,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     return JSONResponse(status_code=400, content={"detail": cleaned_errors})
 
 
-# Registrar routers
+# Register all API routers
 app.include_router(auth_router)
 app.include_router(chat_router)
 app.include_router(logs_router, prefix="/logs", tags=["logs"])
@@ -96,9 +120,11 @@ app.include_router(voice_router)
 
 @app.get("/health")
 async def health():
+    """Health check endpoint for monitoring and load balancers."""
     return {"status": "ok", "version": "1.0.0"}
 
 
 @app.get("/")
 async def root():
-    return {"message": "Pegasus API - Asistente técnico Auteco", "docs": "/docs"}
+    """Root endpoint with API metadata and link to Swagger documentation."""
+    return {"message": "Pegasus API - Auteco Technical Assistant", "docs": "/docs"}

@@ -1,3 +1,9 @@
+/**
+ * Chat history routes for retrieving and deleting conversation sessions.
+ *
+ * Proxies requests to FastAPI's logging endpoints with JWT authentication.
+ * All routes require authentication.
+ */
 import { Router } from 'express'
 import { requireAuth } from '../middleware/requireAuth.js'
 import * as historyService from '../services/historyService.js'

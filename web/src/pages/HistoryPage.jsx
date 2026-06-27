@@ -1,3 +1,9 @@
+/**
+ * Conversation history page.
+ *
+ * Lists all past conversations with delete capability.
+ * Uses React Query for data fetching and cache management.
+ */
 import { History, Trash2 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { historyService } from '@services/api'
